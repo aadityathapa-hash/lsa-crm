@@ -11,79 +11,56 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // Safety timeout — never hang more than 5 seconds
+    // Safety timeout — never hang more than 4 seconds
     const timeout = setTimeout(() => {
       if (mounted && loading) {
-        console.warn("Auth timeout — forcing load complete");
+        console.warn("Auth timeout — clearing stale state");
         setLoading(false);
       }
-    }, 5000);
+    }, 4000);
 
     async function initAuth() {
       try {
-        // Check for OAuth callback hash in URL
-        if (window.location.hash && window.location.hash.includes("access_token")) {
-          // Let Supabase process the callback
-          const { data, error } = await supabase.auth.getSession();
-          if (error) {
-            console.error("OAuth callback error:", error.message);
-            // Clear the bad hash and show login
-            window.history.replaceState(null, "", window.location.pathname);
-            if (mounted) setLoading(false);
-            return;
-          }
-          // Clean up the URL hash
-          window.history.replaceState(null, "", window.location.pathname);
-          
-          if (data?.session?.user && mounted) {
-            setUser(data.session.user);
-            await fetchProfile(data.session.user.id);
-          }
-          if (mounted) setLoading(false);
-          return;
-        }
-
-        // Normal session check
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error("Session error:", error.message);
-          if (mounted) setLoading(false);
-          return;
-        }
-
+        // If URL has hash with access_token, Supabase needs to exchange it
+        // The onAuthStateChange listener will handle it
+        // Just get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
         if (session?.user && mounted) {
           setUser(session.user);
-          await fetchProfile(session.user.id);
+          await loadProfile(session.user.id);
         }
-        if (mounted) setLoading(false);
       } catch (err) {
         console.error("Auth init error:", err);
+      } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    initAuth();
-
-    // Listen for auth changes (sign in, sign out, token refresh)
+    // This listener catches the OAuth callback token exchange
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
-        
-        if (event === "SIGNED_OUT") {
-          setUser(null);
-          setProfile(null);
-          return;
-        }
 
-        if (session?.user) {
+        if (event === "SIGNED_IN" && session?.user) {
           setUser(session.user);
-          await fetchProfile(session.user.id);
-        } else {
+          await loadProfile(session.user.id);
+          setLoading(false);
+          // Clean the hash from URL
+          if (window.location.hash) {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        } else if (event === "SIGNED_OUT") {
           setUser(null);
           setProfile(null);
+          setLoading(false);
+        } else if (event === "TOKEN_REFRESHED" && session?.user) {
+          setUser(session.user);
         }
       }
     );
+
+    initAuth();
 
     return () => {
       mounted = false;
@@ -92,34 +69,30 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  async function fetchProfile(userId) {
+  async function loadProfile(userId) {
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .single();
-
-      if (error) {
-        console.error("Profile fetch error:", error.message);
-        setProfile(null);
-      } else {
+      if (!error && data) {
         setProfile(data);
+      } else {
+        console.error("Profile error:", error?.message);
+        setProfile(null);
       }
     } catch (err) {
-      console.error("Profile fetch exception:", err);
+      console.error("Profile exception:", err);
       setProfile(null);
     }
   }
 
   async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
+      options: { redirectTo: window.location.origin },
     });
-    if (error) console.error("Login error:", error.message);
   }
 
   async function signOut() {
@@ -128,18 +101,16 @@ export function AuthProvider({ children }) {
     setProfile(null);
   }
 
-  const value = {
-    user,
-    profile,
-    loading,
-    signInWithGoogle,
-    signOut,
-    isAdmin: profile?.role === "admin",
-    isAgent: profile?.role === "agent",
-    isViewer: profile?.role === "viewer",
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user, profile, loading, signInWithGoogle, signOut,
+      isAdmin: profile?.role === "admin",
+      isAgent: profile?.role === "agent",
+      isViewer: profile?.role === "viewer",
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
