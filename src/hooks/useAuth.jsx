@@ -9,30 +9,87 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
+    let mounted = true;
+
+    // Safety timeout — never hang more than 5 seconds
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn("Auth timeout — forcing load complete");
         setLoading(false);
       }
-    });
+    }, 5000);
 
-    // Listen for auth changes
+    async function initAuth() {
+      try {
+        // Check for OAuth callback hash in URL
+        if (window.location.hash && window.location.hash.includes("access_token")) {
+          // Let Supabase process the callback
+          const { data, error } = await supabase.auth.getSession();
+          if (error) {
+            console.error("OAuth callback error:", error.message);
+            // Clear the bad hash and show login
+            window.history.replaceState(null, "", window.location.pathname);
+            if (mounted) setLoading(false);
+            return;
+          }
+          // Clean up the URL hash
+          window.history.replaceState(null, "", window.location.pathname);
+          
+          if (data?.session?.user && mounted) {
+            setUser(data.session.user);
+            await fetchProfile(data.session.user.id);
+          }
+          if (mounted) setLoading(false);
+          return;
+        }
+
+        // Normal session check
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Session error:", error.message);
+          if (mounted) setLoading(false);
+          return;
+        }
+
+        if (session?.user && mounted) {
+          setUser(session.user);
+          await fetchProfile(session.user.id);
+        }
+        if (mounted) setLoading(false);
+      } catch (err) {
+        console.error("Auth init error:", err);
+        if (mounted) setLoading(false);
+      }
+    }
+
+    initAuth();
+
+    // Listen for auth changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user ?? null);
+      async (event, session) => {
+        if (!mounted) return;
+        
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+          setProfile(null);
+          return;
+        }
+
         if (session?.user) {
+          setUser(session.user);
           await fetchProfile(session.user.id);
         } else {
+          setUser(null);
           setProfile(null);
-          setLoading(false);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function fetchProfile(userId) {
@@ -45,7 +102,6 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.error("Profile fetch error:", error.message);
-        // Still set loading false so the app doesn't hang
         setProfile(null);
       } else {
         setProfile(data);
@@ -53,9 +109,6 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error("Profile fetch exception:", err);
       setProfile(null);
-    } finally {
-      // ALWAYS set loading to false, even on error
-      setLoading(false);
     }
   }
 
