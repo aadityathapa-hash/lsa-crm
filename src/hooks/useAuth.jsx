@@ -11,42 +11,34 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // Safety timeout — never hang more than 4 seconds
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn("Auth timeout — clearing stale state");
-        setLoading(false);
-      }
-    }, 4000);
-
     async function initAuth() {
       try {
-        // If URL has hash with access_token, Supabase needs to exchange it
-        // The onAuthStateChange listener will handle it
-        // Just get current session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && mounted) {
           setUser(session.user);
-          await loadProfile(session.user.id);
+          // Set loading false IMMEDIATELY so the page renders
+          setLoading(false);
+          // Then load profile in background
+          loadProfile(session.user.id);
+        } else {
+          if (mounted) setLoading(false);
         }
       } catch (err) {
         console.error("Auth init error:", err);
-      } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    // This listener catches the OAuth callback token exchange
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
 
         if (event === "SIGNED_IN" && session?.user) {
           setUser(session.user);
-          await loadProfile(session.user.id);
           setLoading(false);
-          // Clean the hash from URL
+          loadProfile(session.user.id);
+          // Clean hash from URL
           if (window.location.hash) {
             window.history.replaceState(null, "", window.location.pathname);
           }
@@ -56,11 +48,19 @@ export function AuthProvider({ children }) {
           setLoading(false);
         } else if (event === "TOKEN_REFRESHED" && session?.user) {
           setUser(session.user);
+          loadProfile(session.user.id);
         }
       }
     );
 
     initAuth();
+
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        setLoading(false);
+      }
+    }, 3000);
 
     return () => {
       mounted = false;
@@ -80,11 +80,9 @@ export function AuthProvider({ children }) {
         setProfile(data);
       } else {
         console.error("Profile error:", error?.message);
-        setProfile(null);
       }
     } catch (err) {
       console.error("Profile exception:", err);
-      setProfile(null);
     }
   }
 
