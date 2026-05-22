@@ -7,6 +7,7 @@ import LeadExplorer from "./pages/LeadExplorer";
 import AgentPerformance from "./pages/AgentPerformance";
 import MarketReports from "./pages/MarketReports";
 import DailyReport from "./pages/DailyReport";
+import AgentCallForm from "./pages/AgentCallForm";
 import Admin from "./pages/Admin";
 
 export default function App() {
@@ -51,6 +52,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Layout><DailyReport /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/log-call"
+            element={
+              <ProtectedRoute roles={["admin", "agent"]}>
+                <Layout><AgentCallForm /></Layout>
               </ProtectedRoute>
             }
           />
