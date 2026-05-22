@@ -12,16 +12,20 @@ export function AuthProvider({ children }) {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setLoading(false);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setUser(session?.user ?? null);
-        if (session?.user) await fetchProfile(session.user.id);
-        else {
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
           setProfile(null);
           setLoading(false);
         }
@@ -32,14 +36,27 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function fetchProfile(userId) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
 
-    if (data) setProfile(data);
-    setLoading(false);
+      if (error) {
+        console.error("Profile fetch error:", error.message);
+        // Still set loading false so the app doesn't hang
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error("Profile fetch exception:", err);
+      setProfile(null);
+    } finally {
+      // ALWAYS set loading to false, even on error
+      setLoading(false);
+    }
   }
 
   async function signInWithGoogle() {
