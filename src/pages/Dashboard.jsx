@@ -82,12 +82,22 @@ export default function Dashboard() {
 
   async function fetchDashboard() {
     setLoading(true);
-
-    const { data: leads } = await supabase
-      .from("leads")
-      .select("classification, charged, market_id, duration_seconds, hour_of_day")
-      .eq("month", month)
-      .eq("year", year)
+    let leads = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data } = await supabase
+        .from("leads")
+        .select("classification, charged, market_id, duration_seconds, hour_of_day")
+        .eq("month", month)
+        .eq("year", year)
+        .eq("is_deleted", false)
+        .range(from, from + PAGE - 1);
+      if (!data || data.length === 0) break;
+      leads = leads.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
       .eq("is_deleted", false);
 
     if (!leads) { setLoading(false); return; }
