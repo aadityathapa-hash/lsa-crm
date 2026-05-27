@@ -98,7 +98,6 @@ export default function Dashboard() {
       if (data.length < PAGE) break;
       from += PAGE;
     }
-      .eq("is_deleted", false);
 
     if (!leads) { setLoading(false); return; }
 
