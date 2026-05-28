@@ -11,6 +11,7 @@ import DailyReport from "./pages/DailyReport";
 import AgentCallForm from "./pages/AgentCallForm";
 import CsvUpload from "./pages/CsvUpload";
 import Admin from "./pages/Admin";
+import Exceptions from "./pages/Exceptions";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/agents/:agentId" element={<ProtectedRoute><Layout><AgentDetail /></Layout></ProtectedRoute>} />
           <Route path="/markets" element={<ProtectedRoute><Layout><MarketReports /></Layout></ProtectedRoute>} />
           <Route path="/daily" element={<ProtectedRoute><Layout><DailyReport /></Layout></ProtectedRoute>} />
+          <Route path="/insights" element={<ProtectedRoute><Layout><Exceptions /></Layout></ProtectedRoute>} />
           <Route path="/log-call" element={<ProtectedRoute roles={["admin","agent"]}><Layout><AgentCallForm /></Layout></ProtectedRoute>} />
           <Route path="/import" element={<ProtectedRoute roles={["admin"]}><Layout><CsvUpload /></Layout></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><Layout><Admin /></Layout></ProtectedRoute>} />
