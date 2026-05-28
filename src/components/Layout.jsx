@@ -9,6 +9,7 @@ const nav = [
   { path: "/markets", label: "Market Reports", icon: "📈" },
   { path: "/daily", label: "Daily Report", icon: "📅" },
   { path: "/insights", label: "Insights", icon: "⚡" },
+  { path: "/insights", label: "Insights", icon: "⚡" },
   { path: "/import", label: "Import", icon: "📥", roles: ["admin"] },
 ];
 
