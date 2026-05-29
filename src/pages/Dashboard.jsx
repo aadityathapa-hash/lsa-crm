@@ -118,7 +118,6 @@ async function fetchAgentCallStats(month, year) {
     if (batch.length < 1000) break;
     from += 1000;
   }
-    .eq("month", month).eq("year", year);
   if (!rows || rows.length === 0) return null;
 
   const total = rows.length;
