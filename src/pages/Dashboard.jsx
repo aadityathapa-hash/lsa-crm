@@ -105,10 +105,19 @@ function ChartTooltip({ active, payload, label, suffix }) {
 }
 
 async function fetchAgentCallStats(month, year) {
-  const { data: rows } = await supabase
-    .from("agent_calls")
-    .select("source_classification, result, market_name, is_bot")
-    .eq("month", month).eq("year", year);
+  let rows = [];
+  let from = 0;
+  while (true) {
+    const { data: batch } = await supabase
+      .from("agent_calls")
+      .select("source_classification, result, market_name, is_bot")
+      .eq("month", month).eq("year", year)
+      .range(from, from + 999);
+    if (!batch || batch.length === 0) break;
+    rows = rows.concat(batch);
+    if (batch.length < 1000) break;
+    from += 1000;
+  }
   if (!rows || rows.length === 0) return null;
 
   const total = rows.length;
