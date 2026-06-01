@@ -154,7 +154,7 @@ export default function Dashboard() {
   const [allMonths, setAllMonths] = useState([]);
   const [hourlyData, setHourlyData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [month, setMonth] = useState(new Date().getMonth() === 0 ? 12 : new Date().getMonth());
   const [year] = useState(2026);
   const [lastUpdated, setLastUpdated] = useState(null);
   const navigate = useNavigate();
