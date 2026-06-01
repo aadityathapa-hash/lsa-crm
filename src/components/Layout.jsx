@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { logActivity } from "../lib/logActivity";
 
 const nav = [
   { path: "/", label: "Dashboard", icon: "📊" },
@@ -19,6 +21,17 @@ const adminNav = [
 export default function Layout({ children }) {
   const { profile, signOut } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    const pageNames = {
+      "/": "Dashboard", "/leads": "Lead Explorer", "/log-call": "Log Call",
+      "/agents": "Agent Performance", "/markets": "Market Reports",
+      "/daily": "Daily Report", "/insights": "Insights", "/import": "Import",
+      "/admin": "Admin",
+    };
+    const name = pageNames[location.pathname] || location.pathname;
+    logActivity("page_view", name);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-slate-50">

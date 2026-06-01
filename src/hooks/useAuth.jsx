@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { logActivity } from "../lib/logActivity";
 
 const AuthContext = createContext({});
 
@@ -38,6 +39,7 @@ export function AuthProvider({ children }) {
           setUser(session.user);
           setLoading(false);
           loadProfile(session.user.id);
+          logActivity("login");
           // Clean hash from URL
           if (window.location.hash) {
             window.history.replaceState(null, "", window.location.pathname);
