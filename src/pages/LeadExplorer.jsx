@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
+// agent_calls.source_classification -> short label used by the UI
+const shortClass = (sc) => {
+  if (!sc) return null;
+  if (sc.includes("Connected")) return "Connected";
+  if (sc.includes("Missed")) return "Missed";
+  if (sc.toLowerCase().includes("non")) return "Non-Charged";
+  return sc;
+};
+const CLASS_TO_SC = {
+  Connected: "Charged Call - Connected",
+  Missed: "Charged Call - Missed",
+  "Non-Charged": "Non Charged Call",
+};
+
 function ClassBadge({ classification }) {
   const cls = classification === "Connected" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
     : classification === "Missed" ? "bg-red-50 text-red-700 border-red-200"
@@ -35,19 +49,26 @@ export default function LeadExplorer() {
 
   async function fetchLeads() {
     setLoading(true);
-    let query = supabase
-      .from("leads")
-      .select("*, markets(name)")
-      .eq("year", 2026).eq("month", month).eq("is_deleted", false)
-      .order("lead_creation_timestamp", { ascending: false })
-      .range(0, 999);
-
-    if (market !== "all") query = query.eq("market_id", market);
-    if (classification !== "all") query = query.eq("classification", classification);
-    if (search) query = query.or(`customer_name.ilike.%${search}%,phone.ilike.%${search}%`);
-
-    const { data } = await query;
-    setLeads(data || []);
+    // Single source of truth: read from agent_calls (the source-built pipeline),
+    // not the legacy `leads` table. Paginates past the 1000-row cap.
+    let rows = [], from = 0;
+    while (true) {
+      let query = supabase
+        .from("agent_calls")
+        .select("id, lead_creation_date, market_name, client_name, phone, source_classification, duration_seconds, job_type")
+        .eq("year", 2026).eq("month", month).eq("is_deleted", false)
+        .order("lead_creation_date", { ascending: false })
+        .range(from, from + 999);
+      if (market !== "all") query = query.eq("market_name", market);
+      if (classification !== "all") query = query.eq("source_classification", CLASS_TO_SC[classification]);
+      if (search) query = query.or(`client_name.ilike.%${search}%,phone.ilike.%${search}%`);
+      const { data: batch } = await query;
+      if (!batch || batch.length === 0) break;
+      rows = rows.concat(batch);
+      if (batch.length < 1000) break;
+      from += 1000;
+    }
+    setLeads(rows);
     setLoading(false);
   }
 
@@ -56,9 +77,9 @@ export default function LeadExplorer() {
   const totalPages = Math.ceil(leads.length / pageSize);
 
   // Summary counts
-  const connected = leads.filter(l => l.classification === "Connected").length;
-  const missed = leads.filter(l => l.classification === "Missed").length;
-  const nonCharged = leads.filter(l => l.classification === "Non-Charged").length;
+  const connected = leads.filter(l => shortClass(l.source_classification) === "Connected").length;
+  const missed = leads.filter(l => shortClass(l.source_classification) === "Missed").length;
+  const nonCharged = leads.filter(l => shortClass(l.source_classification) === "Non-Charged").length;
 
   return (
     <div>
@@ -87,7 +108,7 @@ export default function LeadExplorer() {
         <select value={market} onChange={(e) => setMarket(e.target.value)}
           className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none">
           <option value="all">All Markets</option>
-          {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          {markets.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
         </select>
         <select value={classification} onChange={(e) => setClassification(e.target.value)}
           className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none">
@@ -129,12 +150,12 @@ export default function LeadExplorer() {
                 {paged.map((lead, i) => (
                   <tr key={lead.id} className={`border-t border-slate-50 hover:bg-blue-50/30 transition-colors ${i % 2 ? "bg-slate-50/30" : ""}`}>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-[13px]">
-                      {lead.lead_creation_timestamp ? new Date(lead.lead_creation_timestamp).toLocaleDateString() : "—"}
+                      {lead.lead_creation_date ? new Date(lead.lead_creation_date + "T00:00:00").toLocaleDateString() : "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-800 font-semibold text-[13px]">{lead.markets?.name || "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{lead.customer_name || "—"}</td>
+                    <td className="px-4 py-3 text-slate-800 font-semibold text-[13px]">{lead.market_name || "—"}</td>
+                    <td className="px-4 py-3 text-slate-600">{lead.client_name || "—"}</td>
                     <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">{lead.phone || "—"}</td>
-                    <td className="px-4 py-3"><ClassBadge classification={lead.classification} /></td>
+                    <td className="px-4 py-3"><ClassBadge classification={shortClass(lead.source_classification)} /></td>
                     <td className="px-4 py-3 text-slate-600 tabular-nums">
                       {lead.duration_seconds ? (
                         <span className="text-emerald-600 font-medium">{lead.duration_seconds}s</span>

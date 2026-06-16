@@ -228,25 +228,26 @@ export default function Dashboard() {
     }
     if (prev && sfPrev && sfPrev.count > 0) prev.booked = sfPrev.booked;
 
-    // Hourly from leads table
-    let leads = [];
+    // Hourly from agent_calls (single source of truth — was the legacy `leads` table)
+    let hrows = [];
     let from = 0;
     while (true) {
       const { data: batch } = await supabase
-        .from("leads").select("classification, hour_of_day")
+        .from("agent_calls").select("source_classification, hour_of_day")
         .eq("month", month).eq("year", year).eq("is_deleted", false)
         .range(from, from + 999);
       if (!batch || batch.length === 0) break;
-      leads = leads.concat(batch);
+      hrows = hrows.concat(batch);
       if (batch.length < 1000) break;
       from += 1000;
     }
     const hourly = {};
-    leads.forEach(l => {
+    hrows.forEach(l => {
       if (l.hour_of_day != null) {
         if (!hourly[l.hour_of_day]) hourly[l.hour_of_day] = { hour: l.hour_of_day, connected: 0, missed: 0, nonCharged: 0 };
-        if (l.classification === "Connected") hourly[l.hour_of_day].connected++;
-        else if (l.classification === "Missed") hourly[l.hour_of_day].missed++;
+        const sc = l.source_classification || "";
+        if (sc.includes("Connected")) hourly[l.hour_of_day].connected++;
+        else if (sc.includes("Missed")) hourly[l.hour_of_day].missed++;
         else hourly[l.hour_of_day].nonCharged++;
       }
     });
