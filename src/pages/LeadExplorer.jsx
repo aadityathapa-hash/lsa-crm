@@ -15,6 +15,17 @@ const CLASS_TO_SC = {
   "Non-Charged": "Non Charged Call",
 };
 
+const fmtDate = (s) => (s ? new Date(s).toLocaleString() : null);
+
+function Field({ label, value }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className="text-slate-700 break-words">{value || "—"}</p>
+    </div>
+  );
+}
+
 function ClassBadge({ classification }) {
   const cls = classification === "Connected" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
     : classification === "Missed" ? "bg-red-50 text-red-700 border-red-200"
@@ -36,11 +47,30 @@ export default function LeadExplorer() {
   const [search, setSearch] = useState("");
   const [markets, setMarkets] = useState([]);
   const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [sfDetail, setSfDetail] = useState(null);
+  const [agentMap, setAgentMap] = useState({});
   const pageSize = 50;
 
   useEffect(() => {
     supabase.from("markets").select("id, name").order("name").then(({ data }) => setMarkets(data || []));
+    supabase.from("agents").select("id, name").then(({ data }) =>
+      setAgentMap(Object.fromEntries((data || []).map((a) => [a.id, a.name]))));
   }, []);
+
+  async function openLead(lead) {
+    setSelected(lead);
+    setSfDetail(null);
+    if (lead.phone) {
+      const { data } = await supabase
+        .from("sf_opportunities")
+        .select("status, initial_scheduled_start, last_scheduled_date, last_modified_date, created_by, amount, cancellation_source, franchise, contact_name, opportunity_id")
+        .eq("phone", lead.phone)
+        .order("last_modified_date", { ascending: false })
+        .limit(1);
+      setSfDetail(data && data[0] ? data[0] : null);
+    }
+  }
 
   useEffect(() => {
     fetchLeads();
@@ -55,7 +85,7 @@ export default function LeadExplorer() {
     while (true) {
       let query = supabase
         .from("agent_calls")
-        .select("id, lead_creation_date, market_name, client_name, phone, source_classification, duration_seconds, job_type")
+        .select("id, lead_creation_date, market_name, client_name, phone, source_classification, duration_seconds, job_type, agent_id, result, revenue, notes, is_bot, op_id, hour_of_day")
         .eq("year", 2026).eq("month", month).eq("is_deleted", false)
         .order("lead_creation_date", { ascending: false })
         .range(from, from + 999);
@@ -148,7 +178,8 @@ export default function LeadExplorer() {
               </thead>
               <tbody>
                 {paged.map((lead, i) => (
-                  <tr key={lead.id} className={`border-t border-slate-50 hover:bg-blue-50/30 transition-colors ${i % 2 ? "bg-slate-50/30" : ""}`}>
+                  <tr key={lead.id} onClick={() => openLead(lead)}
+                    className={`border-t border-slate-50 hover:bg-blue-50/40 cursor-pointer transition-colors ${i % 2 ? "bg-slate-50/30" : ""}`}>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-[13px]">
                       {lead.lead_creation_date ? new Date(lead.lead_creation_date + "T00:00:00").toLocaleDateString() : "—"}
                     </td>
@@ -194,6 +225,50 @@ export default function LeadExplorer() {
                 className="text-sm font-medium text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors">Next →</button>
             </div>
           )}
+        </div>
+      )}
+
+      {selected && (
+        <div onClick={() => setSelected(null)}
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">{selected.client_name || "Lead detail"}</h2>
+                <p className="text-[12px] text-slate-400 font-mono">{selected.phone || "—"}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <ClassBadge classification={shortClass(selected.source_classification)} />
+                <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+              </div>
+            </div>
+            <div className="px-6 py-4 grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+              <Field label="Market" value={selected.market_name} />
+              <Field label="Date" value={selected.lead_creation_date ? new Date(selected.lead_creation_date + "T00:00:00").toLocaleDateString() : null} />
+              <Field label="Handled by" value={selected.is_bot ? "Avoca (bot)" : agentMap[selected.agent_id]} />
+              <Field label="Result" value={selected.result} />
+              <Field label="Duration" value={selected.duration_seconds ? selected.duration_seconds + "s" : null} />
+              <Field label="Revenue" value={selected.revenue != null ? "$" + Number(selected.revenue).toLocaleString() : null} />
+              <Field label="Opportunity ID" value={selected.op_id} />
+              <Field label="Job type" value={selected.job_type} />
+              <div className="col-span-2 border-t border-slate-100 pt-3 mt-1">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Salesforce</p>
+              </div>
+              <Field label="SF status" value={sfDetail?.status} />
+              <Field label="Booked by" value={sfDetail?.created_by} />
+              <Field label="Last contacted" value={fmtDate(sfDetail?.last_modified_date)} />
+              <Field label="Scheduled start" value={fmtDate(sfDetail?.initial_scheduled_start)} />
+              <Field label="Last scheduled" value={fmtDate(sfDetail?.last_scheduled_date)} />
+              <Field label="Cancellation" value={sfDetail?.cancellation_source} />
+              {selected.notes && (
+                <div className="col-span-2">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                  <p className="text-[12px] text-slate-600">{selected.notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
