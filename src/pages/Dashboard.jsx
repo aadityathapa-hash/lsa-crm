@@ -148,6 +148,40 @@ async function fetchAgentCallStats(month, year) {
   return { total, connected, missed, nonCharged, charged, disputes, booked, connRate, marketData };
 }
 
+// SF status -> lifecycle bucket (mirrors the pipeline). 'New' is not booked.
+const SF_BUCKET = {
+  "paid": "Completed", "invoiced": "Completed",
+  "job booked": "Pending", "estimate presented": "Pending", "on-site estimate booked": "Pending",
+  "canceled": "Canceled",
+};
+
+// Bookings come from Salesforce — ALL opps created in the month, not agent_calls.
+// agent_calls is LSA-attributed only and undercounts vs Maddie's "All In".
+async function fetchSfBookings(month, year) {
+  const start = `${year}-${String(month).padStart(2, "0")}-01`;
+  const end = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  let rows = [], from = 0;
+  while (true) {
+    const { data: batch } = await supabase
+      .from("sf_opportunities")
+      .select("status, amount")
+      .gte("create_datetime", start).lt("create_datetime", end)
+      .range(from, from + 999);
+    if (!batch || batch.length === 0) break;
+    rows = rows.concat(batch);
+    if (batch.length < 1000) break;
+    from += 1000;
+  }
+  let completed = 0, pending = 0, canceled = 0, completedRevenue = 0;
+  rows.forEach(r => {
+    const b = SF_BUCKET[(r.status || "").toLowerCase()];
+    if (b === "Completed") { completed++; completedRevenue += Number(r.amount) || 0; }
+    else if (b === "Pending") pending++;
+    else if (b === "Canceled") canceled++;
+  });
+  return { count: rows.length, booked: completed + pending + canceled, completed, pending, canceled, completedRevenue };
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [prevData, setPrevData] = useState(null);
@@ -180,6 +214,19 @@ export default function Dashboard() {
     setLoading(true);
     const stats = await fetchAgentCallStats(month, year);
     const prev = month > 1 ? await fetchAgentCallStats(month - 1, year) : null;
+
+    // Booked + lifecycle from Salesforce (all month opps). Falls back to the
+    // agent_calls booked count if SF returns nothing (RLS/ingest not ready yet).
+    const sf = await fetchSfBookings(month, year);
+    const sfPrev = month > 1 ? await fetchSfBookings(month - 1, year) : null;
+    if (stats && sf.count > 0) {
+      stats.booked = sf.booked;
+      stats.completed = sf.completed;
+      stats.pending = sf.pending;
+      stats.canceled = sf.canceled;
+      stats.completedRevenue = sf.completedRevenue;
+    }
+    if (prev && sfPrev && sfPrev.count > 0) prev.booked = sfPrev.booked;
 
     // Hourly from leads table
     let leads = [];
@@ -275,6 +322,18 @@ export default function Dashboard() {
           trend={bookedDelta > 0 ? "up" : bookedDelta < 0 ? "down" : null} />
         <KpiCard label="Disputes" value={data.disputes.toLocaleString()} icon="⚖️" accent="bg-slate-50" />
       </div>
+
+      {data.completed != null && (
+        <div className="-mt-4 mb-8">
+          <SectionHeader title="Bookings — Salesforce" subtitle="All opps created this month (matches Maddie's All In)" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard label="Completed" value={data.completed.toLocaleString()} icon="✅" accent="bg-emerald-50" />
+            <KpiCard label="Pending" value={data.pending.toLocaleString()} icon="⏳" accent="bg-amber-50" />
+            <KpiCard label="Canceled" value={data.canceled.toLocaleString()} icon="🚫" accent="bg-red-50" />
+            <KpiCard label="Completed Revenue" value={`$${Math.round(data.completedRevenue).toLocaleString()}`} icon="💵" accent="bg-emerald-50" />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
