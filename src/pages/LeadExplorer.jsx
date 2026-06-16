@@ -17,6 +17,18 @@ const CLASS_TO_SC = {
 
 const fmtDate = (s) => (s ? new Date(s).toLocaleString() : null);
 
+// Editable job-lifecycle status (stored in lead_status, survives the daily rebuild)
+const JOB_STATUSES = ["Booked", "Pending", "Completed", "Canceled", "No-show", "Rescheduled"];
+
+function StatusBadge({ status }) {
+  if (!status) return <span className="text-slate-300">—</span>;
+  const cls = status === "Completed" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : status === "Pending" || status === "Booked" ? "bg-blue-50 text-blue-700 border-blue-200"
+    : status === "Rescheduled" ? "bg-amber-50 text-amber-700 border-amber-200"
+    : "bg-red-50 text-red-700 border-red-200"; // Canceled / No-show
+  return <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${cls}`}>{status}</span>;
+}
+
 function Field({ label, value }) {
   return (
     <div>
@@ -98,8 +110,22 @@ export default function LeadExplorer() {
       if (batch.length < 1000) break;
       from += 1000;
     }
-    setLeads(rows);
+    // Overlay manual statuses (separate lead_status table the pipeline never
+    // rebuilds). Resilient: if the table isn't there yet, statuses is null.
+    const { data: statuses } = await supabase.from("lead_status").select("op_id, status");
+    const smap = Object.fromEntries((statuses || []).map((s) => [s.op_id, s.status]));
+    setLeads(rows.map((r) => ({ ...r, _status: smap[r.op_id] || null })));
     setLoading(false);
+  }
+
+  async function saveStatus(opId, status) {
+    const { data: auth } = await supabase.auth.getUser();
+    await supabase.from("lead_status").upsert(
+      { op_id: opId, status: status || null, updated_by: auth?.user?.email || null, updated_at: new Date().toISOString() },
+      { onConflict: "op_id" }
+    );
+    setLeads((prev) => prev.map((l) => (l.op_id === opId ? { ...l, _status: status || null } : l)));
+    setSelected((prev) => (prev ? { ...prev, _status: status || null } : prev));
   }
 
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -171,7 +197,7 @@ export default function LeadExplorer() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50/80">
-                  {["Date", "Market", "Customer", "Phone", "Classification", "Duration", "Job Type"].map((h) => (
+                  {["Date", "Market", "Customer", "Phone", "Classification", "Duration", "Status"].map((h) => (
                     <th key={h} className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-left">{h}</th>
                   ))}
                 </tr>
@@ -194,7 +220,7 @@ export default function LeadExplorer() {
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{lead.job_type || "—"}</td>
+                    <td className="px-4 py-3">{lead._status ? <StatusBadge status={lead._status} /> : <span className="text-slate-400 text-xs">{lead.result || "—"}</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -244,6 +270,18 @@ export default function LeadExplorer() {
               </div>
             </div>
             <div className="px-6 py-4 grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+              <div className="col-span-2">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Lead status (editable)</p>
+                {selected.op_id ? (
+                  <select value={selected._status || ""} onChange={(e) => saveStatus(selected.op_id, e.target.value)}
+                    className="text-sm border border-slate-300 rounded-lg px-3 py-2 w-full bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none">
+                    <option value="">— not set (source: {selected.result || "—"}) —</option>
+                    {JOB_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                ) : (
+                  <p className="text-[12px] text-slate-400">No opportunity id — status can't be tracked for this lead.</p>
+                )}
+              </div>
               <Field label="Market" value={selected.market_name} />
               <Field label="Date" value={selected.lead_creation_date ? new Date(selected.lead_creation_date + "T00:00:00").toLocaleDateString() : null} />
               <Field label="Handled by" value={selected.is_bot ? "Avoca (bot)" : agentMap[selected.agent_id]} />
