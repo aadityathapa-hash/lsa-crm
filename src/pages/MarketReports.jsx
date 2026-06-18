@@ -35,10 +35,52 @@ export default function MarketReports() {
 
   async function fetchMarketData() {
     setLoading(true);
-    const { data } = await supabase
-      .from("v_market_performance").select("*")
-      .eq("market_id", selectedMarket).eq("year", 2026).order("month");
-    setMonthlyData(data || []);
+    // Read live agent_calls (the legacy v_market_performance view was built on
+    // the retired `leads` table and froze on 2026-06-08). Spend/CPL still comes
+    // from lead_costs. Classification mirrors the Dashboard.
+    let rows = [];
+    let from = 0;
+    while (true) {
+      const { data: batch } = await supabase
+        .from("agent_calls")
+        .select("month, source_classification, result")
+        .eq("market_id", selectedMarket).eq("year", 2026)
+        .range(from, from + 999);
+      if (!batch || batch.length === 0) break;
+      rows = rows.concat(batch);
+      if (batch.length < 1000) break;
+      from += 1000;
+    }
+
+    const { data: costs } = await supabase
+      .from("lead_costs").select("month, total_spend")
+      .eq("market_id", selectedMarket).eq("year", 2026);
+    const spendByMonth = {};
+    (costs || []).forEach(c => { spendByMonth[c.month] = (spendByMonth[c.month] || 0) + parseFloat(c.total_spend || 0); });
+
+    const byMonth = {};
+    rows.forEach(r => {
+      const m = r.month;
+      if (!byMonth[m]) byMonth[m] = { month: m, total_leads: 0, connected: 0, missed: 0, disputes: 0 };
+      const o = byMonth[m];
+      o.total_leads++;
+      if (r.source_classification === "Charged Call - Connected") o.connected++;
+      else if (r.source_classification === "Charged Call - Missed") o.missed++;
+      if (r.result === "Dispute - Approved") o.disputes++;
+    });
+    const out = Object.values(byMonth).map(o => {
+      const charged_leads = o.connected + o.missed - o.disputes;
+      const denom = o.connected + o.missed;
+      const spend = spendByMonth[o.month] || 0;
+      return {
+        ...o,
+        charged_leads,
+        connection_rate: denom > 0 ? o.connected / denom : null,
+        total_spend: spend,
+        cpl: charged_leads > 0 && spend > 0 ? spend / charged_leads : null,
+      };
+    }).sort((a, b) => a.month - b.month);
+    setMonthlyData(out);
     setLoading(false);
   }
 

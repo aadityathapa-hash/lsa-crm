@@ -31,13 +31,42 @@ export default function DailyReport() {
 
   async function fetchData() {
     setLoading(true);
-    let query = supabase
-      .from("v_daily_report").select("*")
-      .eq("month", month).eq("year", 2026)
-      .order("lead_date", { ascending: false });
-    if (market !== "all") query = query.eq("market_name", markets.find(m => m.id === market)?.name);
-    const { data: rows } = await query;
-    setData(rows || []);
+    // Read live agent_calls (the legacy v_daily_report view was built on the
+    // retired `leads` table and froze on 2026-06-08). Classification mirrors
+    // the Dashboard exactly: source_classification + result.
+    const marketName = market !== "all" ? markets.find(m => m.id === market)?.name : null;
+    let rows = [];
+    let from = 0;
+    while (true) {
+      let q = supabase
+        .from("agent_calls")
+        .select("lead_creation_date, source_classification, result, market_name")
+        .eq("month", month).eq("year", 2026)
+        .range(from, from + 999);
+      if (marketName) q = q.eq("market_name", marketName);
+      const { data: batch } = await q;
+      if (!batch || batch.length === 0) break;
+      rows = rows.concat(batch);
+      if (batch.length < 1000) break;
+      from += 1000;
+    }
+
+    const byKey = {};
+    rows.forEach(r => {
+      const d = (r.lead_creation_date || "").slice(0, 10);
+      if (!d) return;
+      const key = marketName ? `${d}|${r.market_name}` : d;
+      if (!byKey[key]) byKey[key] = { lead_date: d, market_name: r.market_name, total_leads: 0, connected: 0, missed: 0, disputes: 0 };
+      const o = byKey[key];
+      o.total_leads++;
+      if (r.source_classification === "Charged Call - Connected") o.connected++;
+      else if (r.source_classification === "Charged Call - Missed") o.missed++;
+      if (r.result === "Dispute - Approved") o.disputes++;
+    });
+    const out = Object.values(byKey)
+      .map(o => ({ ...o, charged_leads: o.connected + o.missed - o.disputes }))
+      .sort((a, b) => b.lead_date.localeCompare(a.lead_date));
+    setData(out);
     setLoading(false);
   }
 
