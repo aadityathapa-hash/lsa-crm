@@ -257,7 +257,14 @@ export default function Dashboard() {
 
     setData(stats);
     setPrevData(prev);
-    setLastUpdated(new Date());
+    // "Updated" must reflect when the pipeline last wrote data, NOT the browser
+    // clock — otherwise a frozen pipeline still looks live. Use the latest
+    // agent_calls.created_at for the month.
+    const { data: fresh } = await supabase
+      .from("agent_calls").select("created_at")
+      .eq("month", month).eq("year", year)
+      .order("created_at", { ascending: false }).limit(1);
+    setLastUpdated(fresh && fresh[0]?.created_at ? new Date(fresh[0].created_at) : null);
     setLoading(false);
   }
 
@@ -286,7 +293,13 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
           <div className="flex items-center gap-3 mt-1">
             <p className="text-sm text-slate-400">LSA Performance — {months[month - 1]} {year}</p>
-            {lastUpdated && <span className="text-[10px] text-slate-300 border border-slate-200 rounded-full px-2 py-0.5">Updated {lastUpdated.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</span>}
+            {lastUpdated && (() => {
+              const stale = (Date.now() - lastUpdated.getTime()) > 3 * 60 * 60 * 1000; // >3h = pipeline likely stuck
+              const label = lastUpdated.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+              return <span className={`text-[10px] rounded-full px-2 py-0.5 border ${stale ? "text-amber-700 bg-amber-50 border-amber-200 font-medium" : "text-slate-300 border-slate-200"}`}>
+                {stale ? "⚠ Data from " : "Updated "}{label}
+              </span>;
+            })()}
             <span className="text-[10px] text-blue-500 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 font-medium">All In</span>
           </div>
         </div>
