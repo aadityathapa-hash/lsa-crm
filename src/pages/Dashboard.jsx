@@ -339,7 +339,10 @@ export default function Dashboard() {
 
       {data.completed != null && (
         <div className="-mt-4 mb-8">
-          <SectionHeader title="Bookings — Salesforce" subtitle="All opps created this month (matches Maddie's All In)" />
+          <SectionHeader title="Bookings — Salesforce" subtitle="Salesforce opps created this month" />
+          <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-3 inline-block">
+            ⚠ These figures come from the current Salesforce feed, which is filtered by lead source. Earlier months understate Completed &amp; Revenue until the feed is widened to all LSA lead sources. Call metrics above are unaffected.
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Completed" value={data.completed.toLocaleString()} icon="✅" accent="bg-emerald-50" />
             <KpiCard label="Pending" value={data.pending.toLocaleString()} icon="⏳" accent="bg-amber-50" />
