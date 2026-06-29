@@ -1,381 +1,211 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { Target, TrendingDown, PhoneMissed, UserX, CircleDollarSign, MapPinOff, ChevronRight, ShieldCheck } from "lucide-react";
+import { Skeleton } from "../components/ui";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const CONN_TARGET = 0.95;
 
-function Badge({ color, children }) {
-  const colors = {
-    red: "bg-red-50 text-red-700 border-red-200",
-    amber: "bg-amber-50 text-amber-700 border-amber-200",
-    green: "bg-green-50 text-green-700 border-green-200",
-    blue: "bg-blue-50 text-blue-700 border-blue-200",
-    gray: "bg-slate-50 text-slate-600 border-slate-200",
-  };
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${colors[color] || colors.gray}`}>
-      {children}
-    </span>
-  );
+async function pull(month, year, cols) {
+  let rows = [], from = 0;
+  while (true) {
+    const { data: batch } = await supabase.from("agent_calls").select(cols)
+      .eq("month", month).eq("year", year).eq("is_deleted", false).range(from, from + 999);
+    if (!batch || batch.length === 0) break;
+    rows = rows.concat(batch);
+    if (batch.length < 1000) break;
+    from += 1000;
+  }
+  return rows;
+}
+function marketsFrom(rows) {
+  const by = {};
+  rows.forEach((r) => {
+    const name = r.market_name || "Unattributed";
+    by[name] ||= { market_name: name, market_id: r.market_id, connected: 0, missed: 0, disputes: 0, total: 0 };
+    by[name].total++;
+    if (r.source_classification === "Charged Call - Connected") by[name].connected++;
+    else if (r.source_classification === "Charged Call - Missed") by[name].missed++;
+    if (r.result === "Dispute - Approved") by[name].disputes++;
+  });
+  return Object.values(by).map((m) => ({ ...m, charged: m.connected + m.missed - m.disputes, connRate: m.connected + m.missed > 0 ? m.connected / (m.connected + m.missed) : null }));
 }
 
-function Card({ title, icon, count, severity, children }) {
-  const borderColor = severity === "high" ? "border-l-red-500" : severity === "medium" ? "border-l-amber-500" : "border-l-blue-500";
-  return (
-    <div className={`bg-white rounded-xl border border-slate-200 border-l-4 ${borderColor} hover:shadow-md transition-shadow`}>
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{icon}</span>
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-        </div>
-        {count > 0 && (
-          <Badge color={severity === "high" ? "red" : severity === "medium" ? "amber" : "blue"}>
-            {count} {count === 1 ? "issue" : "issues"}
-          </Badge>
-        )}
-        {count === 0 && <Badge color="green">All clear</Badge>}
-      </div>
-      <div className="px-5 py-3">{children}</div>
-    </div>
-  );
-}
-
-function IssueRow({ market, metric, value, context, severity, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0 ${onClick ? "cursor-pointer hover:bg-slate-50 rounded-lg px-2 -mx-2" : ""}`}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${severity === "high" ? "bg-red-500" : severity === "medium" ? "bg-amber-500" : "bg-blue-500"}`} />
-          <span className="text-sm font-medium text-slate-800 truncate">{market}</span>
-        </div>
-        {context && <p className="text-xs text-slate-400 mt-0.5 ml-3.5">{context}</p>}
-      </div>
-      <div className="text-right ml-4 flex-shrink-0">
-        <span className={`text-sm font-semibold ${severity === "high" ? "text-red-600" : severity === "medium" ? "text-amber-600" : "text-blue-600"}`}>
-          {value}
-        </span>
-        <p className="text-xs text-slate-400">{metric}</p>
-      </div>
-    </div>
-  );
-}
+const SEV = {
+  crit: { label: "Critical", chip: "bg-critical-50 text-critical", text: "text-critical", dot: "bg-critical" },
+  warn: { label: "Warning", chip: "bg-caution-50 text-caution", text: "text-caution", dot: "bg-caution" },
+  data: { label: "Data quality", chip: "bg-steel-50 text-steel", text: "text-steel", dot: "bg-steel" },
+};
 
 export default function Exceptions() {
-  const [data, setData] = useState(null);
+  const [items, setItems] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year] = useState(2026);
+  const year = 2026;
   const navigate = useNavigate();
 
-  useEffect(() => { fetchExceptions(); }, [month]);
+  useEffect(() => { load(); }, [month]);
 
-  async function fetchExceptions() {
+  async function load() {
     setLoading(true);
-
-    // Fetch current month market performance
-    const { data: currentMarkets } = await supabase
-      .from("v_market_performance")
-      .select("*")
-      .eq("month", month)
-      .eq("year", year);
-
-    // Fetch previous month for comparison
     const prevMonth = month > 1 ? month - 1 : 12;
     const prevYear = month > 1 ? year : year - 1;
-    const { data: prevMarkets } = await supabase
-      .from("v_market_performance")
-      .select("*")
-      .eq("month", prevMonth)
-      .eq("year", prevYear);
+    const [cur, prv, agentCalls, agents, costs] = await Promise.all([
+      pull(month, year, "source_classification, result, market_id, market_name, hour_of_day"),
+      pull(prevMonth, prevYear, "source_classification, result, market_name"),
+      pull(month, year, "agent_id, result, is_bot"),
+      supabase.from("agents").select("id, name").then((r) => r.data || []),
+      supabase.from("lead_costs").select("market_id, total_spend").eq("month", month).eq("year", year).then((r) => r.data || []),
+    ]);
+    const agentMap = Object.fromEntries(agents.map((a) => [a.id, a.name]));
+    const curM = marketsFrom(cur);
+    const prevM = Object.fromEntries(marketsFrom(prv).map((m) => [m.market_name, m]));
+    const real = curM.filter((m) => m.market_name !== "Unattributed");
+    const list = [];
 
-    // Fetch leads for missed call analysis
-    let leads = [];
-    let from = 0;
-    while (true) {
-      const { data: batch } = await supabase
-        .from("leads")
-        .select("classification, charged, market_id, hour_of_day, lead_creation_cst, phone, customer_name")
-        .eq("month", month)
-        .eq("year", year)
-        .eq("is_deleted", false)
-        .range(from, from + 999);
-      if (!batch || batch.length === 0) break;
-      leads = leads.concat(batch);
-      if (batch.length < 1000) break;
-      from += 1000;
-    }
-
-    // Fetch agent performance
-    const { data: agentCalls } = await supabase
-      .from("agent_calls")
-      .select("agent_id, result, is_bot, market_id")
-      .eq("month", month)
-      .eq("year", year);
-
-    // Fetch agents
-    const { data: agents } = await supabase
-      .from("agents")
-      .select("id, name");
-
-    // Fetch lead costs for missing spend detection
-    const { data: leadCosts } = await supabase
-      .from("lead_costs")
-      .select("market_id, month, year, total_spend")
-      .eq("month", month)
-      .eq("year", year);
-
-    // Fetch markets
-    const { data: markets } = await supabase
-      .from("markets")
-      .select("id, name")
-      .eq("active", true);
-
-    const marketMap = {};
-    (markets || []).forEach(m => { marketMap[m.id] = m.name; });
-
-    const agentMap = {};
-    (agents || []).forEach(a => { agentMap[a.id] = a.name; });
-
-    // ——— ANALYSIS ———
-
-    // 1. Markets below connection rate target (< 95%)
-    const lowConnRate = (currentMarkets || [])
-      .filter(m => m.connection_rate !== null && m.connection_rate < 0.95 && m.charged_leads >= 5)
-      .sort((a, b) => a.connection_rate - b.connection_rate)
-      .map(m => ({
-        market: m.market_name,
-        value: `${(m.connection_rate * 100).toFixed(1)}%`,
-        metric: "connection rate",
-        context: `${m.missed} missed of ${m.charged_leads} charged`,
-        severity: m.connection_rate < 0.90 ? "high" : "medium",
-        marketId: m.market_id,
+    real.filter((m) => m.connRate != null && m.connRate < CONN_TARGET && m.charged >= 5)
+      .forEach((m) => list.push({
+        sev: m.connRate < 0.90 ? "crit" : "warn", icon: Target, title: m.market_name,
+        detail: `Connection ${(m.connRate * 100).toFixed(1)}% · ${m.missed} missed of ${m.charged} billable`,
+        metric: `${(m.connRate * 100).toFixed(0)}%`, owner: "Market lead", onClick: () => navigate(`/markets`),
       }));
 
-    // 2. Markets with biggest MoM decline
-    const prevMap = {};
-    (prevMarkets || []).forEach(m => { prevMap[m.market_name] = m; });
+    real.forEach((m) => {
+      const p = prevM[m.market_name];
+      if (p && m.connRate != null && p.connRate != null) {
+        const d = (m.connRate - p.connRate) * 100;
+        if (d < -3) list.push({
+          sev: d < -5 ? "crit" : "warn", icon: TrendingDown, title: m.market_name,
+          detail: `${(m.connRate * 100).toFixed(1)}% now, was ${(p.connRate * 100).toFixed(1)}% in ${MONTHS[prevMonth]}`,
+          metric: `${d.toFixed(1)} pts`, owner: "Market lead", onClick: () => navigate(`/markets`),
+        });
+      }
+    });
 
-    const momDecline = (currentMarkets || [])
-      .filter(m => prevMap[m.market_name] && m.connection_rate !== null && prevMap[m.market_name].connection_rate !== null)
-      .map(m => {
-        const prev = prevMap[m.market_name];
-        const delta = (m.connection_rate - prev.connection_rate) * 100;
-        return { ...m, delta, prevRate: prev.connection_rate };
-      })
-      .filter(m => m.delta < -3)
-      .sort((a, b) => a.delta - b.delta)
-      .map(m => ({
-        market: m.market_name,
-        value: `${m.delta.toFixed(1)} pts`,
-        metric: `vs ${MONTHS[prevMonth]}`,
-        context: `${(m.connection_rate * 100).toFixed(1)}% now, was ${(m.prevRate * 100).toFixed(1)}%`,
-        severity: m.delta < -5 ? "high" : "medium",
-      }));
-
-    // 3. Missed call spikes by hour
     const missedByHour = {};
-    leads.filter(l => l.classification === "Missed").forEach(l => {
-      const h = l.hour_of_day;
-      if (h != null) missedByHour[h] = (missedByHour[h] || 0) + 1;
-    });
-    const totalMissed = leads.filter(l => l.classification === "Missed").length;
-    const missedSpikes = Object.entries(missedByHour)
-      .filter(([_, count]) => count >= 3)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([hour, count]) => ({
-        market: `${hour}:00 CST`,
-        value: `${count} missed`,
-        metric: `${((count / totalMissed) * 100).toFixed(0)}% of all missed`,
-        context: null,
-        severity: count >= 5 ? "high" : "medium",
+    cur.filter((r) => r.source_classification === "Charged Call - Missed" && r.hour_of_day != null)
+      .forEach((r) => { missedByHour[r.hour_of_day] = (missedByHour[r.hour_of_day] || 0) + 1; });
+    const totalMissed = cur.filter((r) => r.source_classification === "Charged Call - Missed").length;
+    Object.entries(missedByHour).filter(([, c]) => c >= 3).sort(([, a], [, b]) => b - a).slice(0, 5)
+      .forEach(([hour, c]) => list.push({
+        sev: c >= 5 ? "crit" : "warn", icon: PhoneMissed, title: `${hour}:00 CST`,
+        detail: `${((c / totalMissed) * 100).toFixed(0)}% of all missed calls cluster in this hour`,
+        metric: `${c} missed`, owner: "Floor manager", onClick: () => navigate(`/leads?classification=Missed`),
       }));
 
-    // 4. Agents below booking benchmark (< 30% booking rate)
-    const agentStats = {};
-    (agentCalls || []).forEach(c => {
+    const aStats = {};
+    agentCalls.forEach((c) => {
       const key = c.agent_id || (c.is_bot ? "bot" : "unknown");
-      if (!agentStats[key]) agentStats[key] = { calls: 0, booked: 0, isBot: c.is_bot };
-      agentStats[key].calls++;
-      if (c.result && c.result.toLowerCase().includes("book")) agentStats[key].booked++;
+      aStats[key] ||= { calls: 0, booked: 0, isBot: c.is_bot };
+      aStats[key].calls++;
+      if (c.result === "Booked" || c.result === "FU Booked") aStats[key].booked++;
     });
-
-    const lowBooking = Object.entries(agentStats)
-      .filter(([_, s]) => s.calls >= 10)
-      .map(([id, s]) => ({
-        id,
-        name: agentMap[id] || (s.isBot ? "Avoca (bot)" : "Unknown"),
-        rate: s.calls > 0 ? s.booked / s.calls : 0,
-        calls: s.calls,
-        booked: s.booked,
-      }))
-      .filter(a => a.rate < 0.30)
-      .sort((a, b) => a.rate - b.rate)
-      .map(a => ({
-        market: a.name,
-        value: `${(a.rate * 100).toFixed(1)}%`,
-        metric: "booking rate",
-        context: `${a.booked} booked of ${a.calls} calls`,
-        severity: a.rate < 0.20 ? "high" : "medium",
+    Object.entries(aStats).filter(([k, s]) => s.calls >= 10 && !s.isBot && k !== "bot" && k !== "unknown")
+      .map(([id, s]) => ({ name: agentMap[id] || "Unknown", rate: s.booked / s.calls, ...s }))
+      .filter((a) => a.rate < 0.30).sort((a, b) => a.rate - b.rate)
+      .forEach((a) => list.push({
+        sev: a.rate < 0.20 ? "crit" : "warn", icon: UserX, title: a.name,
+        detail: `${a.booked} booked of ${a.calls} calls`, metric: `${(a.rate * 100).toFixed(1)}%`,
+        owner: "Team lead", onClick: () => navigate("/agents"),
       }));
 
-    // 5. Markets missing spend data
-    const marketsWithSpend = new Set((leadCosts || []).filter(c => c.total_spend > 0).map(c => c.market_id));
-    const marketsWithLeads = new Set((currentMarkets || []).map(m => m.market_id));
-    const missingSpend = [...marketsWithLeads]
-      .filter(id => !marketsWithSpend.has(id))
-      .map(id => ({
-        market: marketMap[id] || `Market ${id}`,
-        value: "No data",
-        metric: "spend missing",
-        context: `CPL cannot be calculated for ${MONTHS[month]}`,
-        severity: "medium",
-      }));
+    const spendMarkets = new Set(costs.filter((c) => c.total_spend > 0).map((c) => c.market_id));
+    real.filter((m) => m.market_id && !spendMarkets.has(m.market_id)).forEach((m) => list.push({
+      sev: "data", icon: CircleDollarSign, title: m.market_name,
+      detail: "No marketing spend entered — CPL can't be calculated", metric: "no spend",
+      owner: "Admin", onClick: () => navigate("/admin"),
+    }));
 
-    // 6. Summary stats
-    const totalLeads = leads.length;
-    const totalConnected = leads.filter(l => l.classification === "Connected").length;
-    const totalMissedCount = leads.filter(l => l.classification === "Missed").length;
-    const totalCharged = leads.filter(l => l.charged).length;
-    const connRate = totalCharged > 0 ? (totalConnected / totalCharged * 100).toFixed(1) : "0";
-
-    const totalIssues = lowConnRate.length + momDecline.length + missedSpikes.length + lowBooking.length + missingSpend.length;
-
-    setData({
-      lowConnRate,
-      momDecline,
-      missedSpikes,
-      lowBooking,
-      missingSpend,
-      totalIssues,
-      totalLeads,
-      totalMissedCount,
-      connRate,
+    const unattr = curM.find((m) => m.market_name === "Unattributed");
+    if (unattr) list.push({
+      sev: "data", icon: MapPinOff, title: "Unattributed leads",
+      detail: `${unattr.total} leads have no market from the source`, metric: `${unattr.total}`,
+      owner: "Admin", onClick: () => navigate("/admin"),
     });
+
+    const totalConnected = cur.filter((r) => r.source_classification === "Charged Call - Connected").length;
+    const totalCharged = totalConnected + totalMissed;
+    setSummary({ leads: cur.length, missed: totalMissed, connRate: totalCharged ? ((totalConnected / totalCharged) * 100).toFixed(1) : "—", issues: list.length });
+    setItems(list);
     setLoading(false);
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const groups = ["crit", "warn", "data"].map((sev) => ({ sev, rows: (items || []).filter((i) => i.sev === sev) })).filter((g) => g.rows.length);
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Insights &amp; Exceptions</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
-            {MONTHS[month]} {year} — {data.totalIssues === 0
-              ? "No issues detected"
-              : `${data.totalIssues} item${data.totalIssues > 1 ? "s" : ""} need attention`}
-          </p>
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink-900">Attention</h1>
+          <p className="text-[13px] text-ink-500 mt-1">Ranked queue of what needs action this month.</p>
         </div>
-        <div className="flex gap-1 bg-white rounded-lg border border-slate-200 p-1">
+        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
           {MONTHS.slice(1).map((m, i) => (
             <button key={m} onClick={() => setMonth(i + 1)}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${
-                month === i + 1
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-              }`}>{m}</button>
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
           ))}
         </div>
       </div>
 
-      {/* Summary strip */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className="text-2xl font-bold text-slate-900">{data.totalLeads.toLocaleString()}</p>
-          <p className="text-xs text-slate-400 mt-1">Total leads</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className="text-2xl font-bold text-slate-900">{data.connRate}%</p>
-          <p className="text-xs text-slate-400 mt-1">Connection rate</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className={`text-2xl font-bold ${data.totalMissedCount > 30 ? "text-red-600" : "text-slate-900"}`}>
-            {data.totalMissedCount}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">Missed calls</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className={`text-2xl font-bold ${data.totalIssues > 0 ? "text-amber-600" : "text-green-600"}`}>
-            {data.totalIssues}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">Issues found</p>
-        </div>
-      </div>
+      {loading ? (
+        <div className="space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14" />)}</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { k: "Leads", v: summary.leads.toLocaleString() },
+              { k: "Connection rate", v: summary.connRate + "%" },
+              { k: "Missed calls", v: summary.missed },
+              { k: "Open items", v: summary.issues },
+            ].map((s) => (
+              <div key={s.k} className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-4">
+                <div className="text-[12px] font-medium text-ink-500">{s.k}</div>
+                <div className="text-[26px] font-bold tracking-[-0.02em] tnum mt-2 leading-none">{s.v}</div>
+              </div>
+            ))}
+          </div>
 
-      {/* Exception cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Markets below target */}
-        <Card title="Markets Below Target" icon="🎯" count={data.lowConnRate.length} severity="high">
-          {data.lowConnRate.length === 0 ? (
-            <p className="text-sm text-slate-400 py-2">All markets above 95% connection rate</p>
-          ) : (
-            data.lowConnRate.map((item, i) => (
-              <IssueRow key={i} {...item} onClick={() => navigate(`/markets?market=${encodeURIComponent(item.market)}`)} />
-            ))
-          )}
-        </Card>
-
-        {/* MoM decline */}
-        <Card title="Month-over-Month Decline" icon="📉" count={data.momDecline.length} severity="medium">
-          {data.momDecline.length === 0 ? (
-            <p className="text-sm text-slate-400 py-2">No significant connection rate drops vs {MONTHS[month > 1 ? month - 1 : 12]}</p>
-          ) : (
-            data.momDecline.map((item, i) => (
-              <IssueRow key={i} {...item} onClick={() => navigate(`/markets?market=${encodeURIComponent(item.market)}`)} />
-            ))
-          )}
-        </Card>
-
-        {/* Missed call spikes */}
-        <Card title="Missed Call Concentrations" icon="📵" count={data.missedSpikes.length} severity={data.missedSpikes.some(s => s.severity === "high") ? "high" : "medium"}>
-          {data.missedSpikes.length === 0 ? (
-            <p className="text-sm text-slate-400 py-2">No significant missed call concentrations</p>
-          ) : (
-            data.missedSpikes.map((item, i) => (
-              <IssueRow key={i} {...item} onClick={() => navigate(`/leads?classification=Missed&month=${month}`)} />
-            ))
-          )}
-        </Card>
-
-        {/* Agents below benchmark */}
-        <Card title="Agents Below Booking Benchmark" icon="👤" count={data.lowBooking.length} severity={data.lowBooking.some(s => s.severity === "high") ? "high" : "medium"}>
-          {data.lowBooking.length === 0 ? (
-            <p className="text-sm text-slate-400 py-2">All agents above 30% booking rate</p>
-          ) : (
-            data.lowBooking.map((item, i) => (
-              <IssueRow key={i} {...item} onClick={() => navigate("/agents")} />
-            ))
-          )}
-        </Card>
-
-        {/* Missing spend data */}
-        <Card title="Missing Spend Data" icon="💰" count={data.missingSpend.length} severity="medium">
-          {data.missingSpend.length === 0 ? (
-            <p className="text-sm text-slate-400 py-2">All markets have spend data for {MONTHS[month]}</p>
-          ) : (
-            <div>
-              {data.missingSpend.slice(0, 8).map((item, i) => (
-                <IssueRow key={i} {...item} onClick={() => navigate("/admin")} />
-              ))}
-              {data.missingSpend.length > 8 && (
-                <p className="text-xs text-slate-400 mt-2">+ {data.missingSpend.length - 8} more markets</p>
-              )}
+          {groups.length === 0 ? (
+            <div className="bg-white rounded-[12px] border border-ink-100 py-14 text-center">
+              <ShieldCheck size={28} className="mx-auto text-accent" />
+              <p className="text-sm font-medium text-ink-700 mt-3">Nothing needs attention</p>
+              <p className="text-[13px] text-ink-400 mt-1">All markets at target, no missed-call spikes, no data gaps for {MONTHS[month]}.</p>
             </div>
+          ) : (
+            groups.map((g) => (
+              <div key={g.sev}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`h-2 w-2 rounded-full ${SEV[g.sev].dot}`} />
+                  <h2 className="text-[12px] font-semibold uppercase tracking-wider text-ink-500">{SEV[g.sev].label}</h2>
+                  <span className="text-[11px] text-ink-400">{g.rows.length}</span>
+                </div>
+                <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+                  {g.rows.map((it, i) => {
+                    const Icon = it.icon;
+                    return (
+                      <button key={i} onClick={it.onClick}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-ink-50 first:border-t-0 hover:bg-ink-50/60 transition-colors">
+                        <span className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${SEV[g.sev].chip}`}><Icon size={16} /></span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-semibold text-ink-800 truncate">{it.title}</div>
+                          <div className="text-[12px] text-ink-500 truncate">{it.detail}</div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className={`text-[13px] font-semibold tnum ${SEV[g.sev].text}`}>{it.metric}</div>
+                          <div className="text-[11px] text-ink-400">{it.owner}</div>
+                        </div>
+                        <ChevronRight size={16} className="text-ink-300 shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
           )}
-        </Card>
-      </div>
+        </>
+      )}
     </div>
   );
 }

@@ -28,3 +28,7 @@ dist-ssr
 .env.local
 .env.production
 .vercel
+
+# secrets — never commit
+gmail_token.json
+*token.json

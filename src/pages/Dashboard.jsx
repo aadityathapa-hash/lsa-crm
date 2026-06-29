@@ -2,124 +2,35 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
+  ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from "recharts";
+import {
+  ArrowUpRight, ChevronRight, CircleAlert,
+  Phone, Receipt, PhoneCall, PhoneMissed, BellOff, Activity, Scale,
+  CalendarCheck, CircleCheck, Clock, CircleX, DollarSign,
+} from "lucide-react";
+import {
+  KpiCard, Section, SourceTag, RateChip, StatusChip, Caveat, Reconcile,
+  Narrative, Skeleton, EmptyState,
+} from "../components/ui";
 
-function Skeleton({ className }) {
-  return <div className={`animate-pulse bg-slate-100 rounded-lg ${className}`} />;
-}
+const C = { accent: "#1f7a52", steel: "#2b5c8a", critical: "#b42318", ink300: "#b4bac6", ink100: "#e7e9ee", ink400: "#8a92a1" };
+const CONN_TARGET = 95;
 
-function DashboardSkeleton() {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div><Skeleton className="h-7 w-40 mb-2" /><Skeleton className="h-4 w-56" /></div>
-        <Skeleton className="h-9 w-96" />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
-        {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-        <Skeleton className="lg:col-span-2 h-72 rounded-xl" />
-        <Skeleton className="h-72 rounded-xl" />
-      </div>
-      <Skeleton className="h-96 rounded-xl" />
-    </div>
-  );
-}
-
-function KpiCard({ label, value, sub, trend, icon, accent, onClick }) {
-  return (
-    <div onClick={onClick}
-      className={`bg-white rounded-xl border border-slate-200 p-5 transition-all ${
-        onClick ? "cursor-pointer hover:shadow-lg hover:border-slate-300 hover:-translate-y-0.5" : "hover:shadow-md"
-      }`}>
-      <div className="flex items-start justify-between">
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${accent || "bg-slate-50"}`}>{icon}</div>
-      </div>
-      <p className="text-[28px] font-bold text-slate-900 mt-2 tracking-tight leading-none">{value}</p>
-      {sub && (
-        <p className={`text-[11px] mt-2.5 font-medium flex items-center gap-1 ${
-          trend === "up" ? "text-emerald-600" : trend === "down" ? "text-red-500" : "text-slate-400"
-        }`}>
-          {trend === "up" && <svg className="w-3 h-3" fill="none" viewBox="0 0 12 12"><path d="M6 2v8M3 5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-          {trend === "down" && <svg className="w-3 h-3" fill="none" viewBox="0 0 12 12"><path d="M6 10V2M3 7l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-          {sub}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function AlertStrip({ marketData, navigate }) {
-  const alerts = [];
-  (marketData || [])
-    .filter(m => m.charged > 0 && m.connRate < 95 && m.charged >= 5)
-    .sort((a, b) => a.connRate - b.connRate)
-    .slice(0, 3)
-    .forEach(m => alerts.push({
-      text: `${m.market_name} at ${m.connRate.toFixed(1)}% connection rate`,
-      severity: m.connRate < 90 ? "red" : "amber",
-    }));
-  if (alerts.length === 0) return null;
-  return (
-    <div onClick={() => navigate("/insights")}
-      className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 flex items-center gap-3 cursor-pointer hover:bg-amber-100/70 transition-colors">
-      <span className="text-amber-600 text-lg">⚠️</span>
-      <div className="flex-1 flex flex-wrap gap-x-5 gap-y-1">
-        {alerts.map((a, i) => <span key={i} className={`text-xs font-medium ${a.severity === "red" ? "text-red-700" : "text-amber-700"}`}>{a.text}</span>)}
-      </div>
-      <span className="text-xs font-medium text-amber-600 whitespace-nowrap">View all →</span>
-    </div>
-  );
-}
-
-function SectionHeader({ title, subtitle }) {
-  return <div className="mb-3"><h2 className="text-[13px] font-semibold text-slate-800">{title}</h2>{subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}</div>;
-}
-
-function RateBadge({ rate }) {
-  if (!rate && rate !== 0) return <span className="text-slate-300">—</span>;
-  const cls = rate >= 98 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-    : rate >= 95 ? "bg-blue-50 text-blue-700 border-blue-200"
-    : rate >= 90 ? "bg-amber-50 text-amber-700 border-amber-200"
-    : "bg-red-50 text-red-700 border-red-200";
-  return <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${cls}`}>{rate.toFixed(1)}%</span>;
-}
-
-function ChartTooltip({ active, payload, label, suffix }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 shadow-xl">
-      <p className="text-[11px] font-semibold text-slate-500 mb-1">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} className="text-[12px]" style={{ color: p.color }}>
-          <span className="font-semibold">{typeof p.value === "number" ? p.value.toLocaleString() : p.value}</span>
-          <span className="text-slate-400 ml-1">{p.name}{suffix || ""}</span>
-        </p>
-      ))}
-    </div>
-  );
-}
-
+/* ---------------- data (unchanged logic) ---------------- */
 async function fetchAgentCallStats(month, year) {
-  let rows = [];
-  let from = 0;
+  let rows = [], from = 0;
   while (true) {
     const { data: batch } = await supabase
-      .from("agent_calls")
-      .select("source_classification, result, market_name, is_bot")
-      .eq("month", month).eq("year", year)
-      .range(from, from + 999);
+      .from("agent_calls").select("source_classification, result, market_name, is_bot")
+      .eq("month", month).eq("year", year).range(from, from + 999);
     if (!batch || batch.length === 0) break;
     rows = rows.concat(batch);
     if (batch.length < 1000) break;
     from += 1000;
   }
-  if (!rows || rows.length === 0) return null;
-
+  if (!rows.length) return null;
   const total = rows.length;
   const connected = rows.filter(r => r.source_classification === "Charged Call - Connected").length;
   const missed = rows.filter(r => r.source_classification === "Charged Call - Missed").length;
@@ -127,46 +38,37 @@ async function fetchAgentCallStats(month, year) {
   const disputes = rows.filter(r => r.result === "Dispute - Approved").length;
   const charged = connected + missed - disputes;
   const booked = rows.filter(r => r.result === "Booked" || r.result === "FU Booked").length;
+  const bot = rows.filter(r => r.is_bot).length;
   const connRate = (connected + missed) > 0 ? (connected / (connected + missed)) * 100 : 0;
-
   const byMarket = {};
   rows.forEach(r => {
-    const m = r.market_name || "Unknown";
-    if (!byMarket[m]) byMarket[m] = { market_name: m, total: 0, connected: 0, missed: 0, nonCharged: 0, booked: 0, disputes: 0 };
+    const m = r.market_name || "Unattributed";
+    if (!byMarket[m]) byMarket[m] = { market_name: m, total: 0, connected: 0, missed: 0, booked: 0, disputes: 0 };
     byMarket[m].total++;
     if (r.source_classification === "Charged Call - Connected") byMarket[m].connected++;
     if (r.source_classification === "Charged Call - Missed") byMarket[m].missed++;
-    if (r.source_classification === "Non Charged Call") byMarket[m].nonCharged++;
     if (r.result === "Booked" || r.result === "FU Booked") byMarket[m].booked++;
     if (r.result === "Dispute - Approved") byMarket[m].disputes++;
   });
   const marketData = Object.values(byMarket).map(m => ({
     ...m, charged: m.connected + m.missed - m.disputes,
     connRate: (m.connected + m.missed) > 0 ? (m.connected / (m.connected + m.missed)) * 100 : 0,
-  })).sort((a, b) => b.total - a.total);
-
-  return { total, connected, missed, nonCharged, charged, disputes, booked, connRate, marketData };
+  }));
+  return { total, connected, missed, nonCharged, charged, disputes, booked, bot, human: total - bot, connRate, marketData };
 }
 
-// SF status -> lifecycle bucket (mirrors the pipeline). 'New' is not booked.
 const SF_BUCKET = {
   "paid": "Completed", "invoiced": "Completed",
   "job booked": "Pending", "estimate presented": "Pending", "on-site estimate booked": "Pending",
   "canceled": "Canceled",
 };
-
-// Bookings come from Salesforce — ALL opps created in the month, not agent_calls.
-// agent_calls is LSA-attributed only and undercounts vs Maddie's "All In".
 async function fetchSfBookings(month, year) {
   const start = `${year}-${String(month).padStart(2, "0")}-01`;
   const end = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
   let rows = [], from = 0;
   while (true) {
-    const { data: batch } = await supabase
-      .from("sf_opportunities")
-      .select("status, amount")
-      .gte("create_datetime", start).lt("create_datetime", end)
-      .range(from, from + 999);
+    const { data: batch } = await supabase.from("sf_opportunities").select("status, amount")
+      .gte("create_datetime", start).lt("create_datetime", end).range(from, from + 999);
     if (!batch || batch.length === 0) break;
     rows = rows.concat(batch);
     if (batch.length < 1000) break;
@@ -182,260 +84,327 @@ async function fetchSfBookings(month, year) {
   return { count: rows.length, booked: completed + pending + canceled, completed, pending, canceled, completedRevenue };
 }
 
+/* ---------------- chart tooltip ---------------- */
+function ChartTip({ active, payload, label, suffix }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white border border-ink-200 rounded-lg px-3 py-2 shadow-[0_10px_30px_-12px_rgba(20,24,31,.18)]">
+      <p className="text-[11px] font-semibold text-ink-500 mb-1">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="text-[12px] tnum" style={{ color: p.color }}>
+          <span className="font-semibold">{typeof p.value === "number" ? p.value.toLocaleString() : p.value}</span>
+          <span className="text-ink-400 ml-1">{p.name}{suffix || ""}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-12 w-full" />
+      <div className="grid grid-cols-3 gap-4">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}</div>
+      <div className="grid grid-cols-2 gap-4"><Skeleton className="h-40" /><Skeleton className="h-40" /></div>
+      <Skeleton className="h-80" />
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
-  const [prevData, setPrevData] = useState(null);
+  const [prev, setPrev] = useState(null);
+  const [sf, setSf] = useState(null);
+  const [sfPrev, setSfPrev] = useState(null);
   const [allMonths, setAllMonths] = useState([]);
-  const [hourlyData, setHourlyData] = useState([]);
+  const [hourly, setHourly] = useState([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().getMonth() === 0 ? 12 : new Date().getMonth() + 1);
   const [year] = useState(2026);
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const [updated, setUpdated] = useState(null);
   const navigate = useNavigate();
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const isCurrent = month === (new Date().getMonth() + 1);
 
-  useEffect(() => { fetchDashboard(); }, [month]);
-  useEffect(() => { fetchAllMonths(); }, []);
+  useEffect(() => { load(); }, [month]);
+  useEffect(() => { loadAllMonths(); }, []);
 
-  async function fetchAllMonths() {
+  async function loadAllMonths() {
     const mn = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const results = [];
+    const out = [];
     for (let m = 1; m <= 12; m++) {
       const s = await fetchAgentCallStats(m, 2026);
-      if (s && s.total > 0) results.push({
-        month: m, name: mn[m], total: s.total, connected: s.connected, missed: s.missed,
-        charged: s.charged, booked: s.booked,
-        connectionRate: parseFloat(s.connRate.toFixed(1)),
-      });
+      if (s && s.total > 0) out.push({ month: m, name: mn[m], total: s.total, booked: s.booked, connectionRate: +s.connRate.toFixed(1) });
     }
-    setAllMonths(results);
+    setAllMonths(out);
   }
 
-  async function fetchDashboard() {
+  async function load() {
     setLoading(true);
-    const stats = await fetchAgentCallStats(month, year);
-    const prev = month > 1 ? await fetchAgentCallStats(month - 1, year) : null;
-
-    // Booked + lifecycle from Salesforce (all month opps). Falls back to the
-    // agent_calls booked count if SF returns nothing (RLS/ingest not ready yet).
-    const sf = await fetchSfBookings(month, year);
-    const sfPrev = month > 1 ? await fetchSfBookings(month - 1, year) : null;
-    if (stats && sf.count > 0) {
-      stats.booked = sf.booked;
-      stats.completed = sf.completed;
-      stats.pending = sf.pending;
-      stats.canceled = sf.canceled;
-      stats.completedRevenue = sf.completedRevenue;
-    }
-    if (prev && sfPrev && sfPrev.count > 0) prev.booked = sfPrev.booked;
-
-    // Hourly from agent_calls (single source of truth — was the legacy `leads` table)
-    let hrows = [];
-    let from = 0;
+    const [stats, pstats, sfb, psfb] = await Promise.all([
+      fetchAgentCallStats(month, year),
+      month > 1 ? fetchAgentCallStats(month - 1, year) : Promise.resolve(null),
+      fetchSfBookings(month, year),
+      month > 1 ? fetchSfBookings(month - 1, year) : Promise.resolve(null),
+    ]);
+    // hourly
+    let hrows = [], from = 0;
     while (true) {
-      const { data: batch } = await supabase
-        .from("agent_calls").select("source_classification, hour_of_day")
-        .eq("month", month).eq("year", year).eq("is_deleted", false)
-        .range(from, from + 999);
+      const { data: batch } = await supabase.from("agent_calls").select("source_classification, hour_of_day")
+        .eq("month", month).eq("year", year).eq("is_deleted", false).range(from, from + 999);
       if (!batch || batch.length === 0) break;
       hrows = hrows.concat(batch);
       if (batch.length < 1000) break;
       from += 1000;
     }
-    const hourly = {};
+    const hr = {};
     hrows.forEach(l => {
-      if (l.hour_of_day != null) {
-        if (!hourly[l.hour_of_day]) hourly[l.hour_of_day] = { hour: l.hour_of_day, connected: 0, missed: 0, nonCharged: 0 };
-        const sc = l.source_classification || "";
-        if (sc.includes("Connected")) hourly[l.hour_of_day].connected++;
-        else if (sc.includes("Missed")) hourly[l.hour_of_day].missed++;
-        else hourly[l.hour_of_day].nonCharged++;
-      }
+      if (l.hour_of_day == null) return;
+      hr[l.hour_of_day] ||= { hour: l.hour_of_day, connected: 0, missed: 0, nonCharged: 0 };
+      const sc = l.source_classification || "";
+      if (sc.includes("Connected")) hr[l.hour_of_day].connected++;
+      else if (sc.includes("Missed")) hr[l.hour_of_day].missed++;
+      else hr[l.hour_of_day].nonCharged++;
     });
-    setHourlyData(Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i}:00`, connected: hourly[i]?.connected || 0, missed: hourly[i]?.missed || 0, nonCharged: hourly[i]?.nonCharged || 0,
+    setHourly(Array.from({ length: 24 }, (_, i) => ({
+      hour: `${i}:00`, connected: hr[i]?.connected || 0, missed: hr[i]?.missed || 0, nonCharged: hr[i]?.nonCharged || 0,
     })).filter(h => h.connected + h.missed + h.nonCharged > 0));
 
-    setData(stats);
-    setPrevData(prev);
-    // "Updated" must reflect when the pipeline last wrote data, NOT the browser
-    // clock — otherwise a frozen pipeline still looks live. Use the latest
-    // agent_calls.created_at for the month.
-    const { data: fresh } = await supabase
-      .from("agent_calls").select("created_at")
-      .eq("month", month).eq("year", year)
-      .order("created_at", { ascending: false }).limit(1);
-    setLastUpdated(fresh && fresh[0]?.created_at ? new Date(fresh[0].created_at) : null);
+    const { data: fresh } = await supabase.from("agent_calls").select("created_at")
+      .eq("month", month).eq("year", year).order("created_at", { ascending: false }).limit(1);
+    setUpdated(fresh?.[0]?.created_at ? new Date(fresh[0].created_at) : null);
+    setData(stats); setPrev(pstats); setSf(sfb); setSfPrev(psfb);
     setLoading(false);
   }
 
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  if (loading) return <DashboardSkeleton />;
-  if (!data) return <p className="text-center text-slate-400 py-20">No data for this month</p>;
+  if (loading) return <OverviewSkeleton />;
+  if (!data) return <EmptyState title={`No data for ${months[month - 1]} ${year}`} hint="Pick another month, or check that the pipeline has run." />;
 
   const pm = month > 1 ? months[month - 2] : null;
-  const d = (cur, prev) => prev != null ? cur - prev : null;
-  const totalDelta = d(data.total, prevData?.total);
-  const chargedDelta = d(data.charged, prevData?.charged);
-  const missedDelta = d(data.missed, prevData?.missed);
-  const bookedDelta = d(data.booked, prevData?.booked);
-  const rateDelta = prevData ? (data.connRate - prevData.connRate).toFixed(1) : null;
+  const delta = (a, b) => (b != null ? a - b : null);
+  const rateDelta = prev ? +(data.connRate - prev.connRate).toFixed(1) : null;
 
-  const pieData = [
-    { name: "Connected", value: data.connected, color: "#10b981" },
-    { name: "Missed", value: data.missed, color: "#ef4444" },
-    { name: "Non-Charged", value: data.nonCharged, color: "#94a3b8" },
-  ].filter(d => d.value > 0);
+  // attention items (markets below target)
+  const below = (data.marketData || [])
+    .filter(m => m.market_name !== "Unattributed" && m.market_name !== "Out of Area" && m.charged >= 5 && m.connRate < CONN_TARGET)
+    .sort((a, b) => a.connRate - b.connRate);
+  const unattributed = (data.marketData || []).find(m => m.market_name === "Unattributed");
+
+  // ranked markets: worst-first among real markets with volume, then the rest
+  const realMarkets = (data.marketData || []).filter(m => m.market_name !== "Unattributed" && m.market_name !== "Out of Area");
+  const ranked = [...realMarkets].sort((a, b) => {
+    const aOff = a.charged >= 5 && a.connRate < CONN_TARGET, bOff = b.charged >= 5 && b.connRate < CONN_TARGET;
+    if (aOff !== bOff) return aOff ? -1 : 1;
+    if (aOff && bOff) return a.connRate - b.connRate;
+    return b.total - a.total;
+  });
+
+  const classTotal = data.connected + data.missed + data.nonCharged || 1;
+  const segs = [
+    { label: "Connected", value: data.connected, color: C.accent },
+    { label: "Missed", value: data.missed, color: C.critical },
+    { label: "Non-billable", value: data.nonCharged, color: C.ink300 },
+  ];
+
+  // narrative
+  const dir = rateDelta == null ? "" : rateDelta >= 0 ? `up ${rateDelta} pts` : `down ${Math.abs(rateDelta)} pts`;
+  const narrative = `${months[month - 1]} ${year}: ${data.total.toLocaleString()} leads, ${data.connRate.toFixed(1)}% connected${pm ? ` (${dir} vs ${pm})` : ""}. ` +
+    `Salesforce shows ${(sf?.booked || 0).toLocaleString()} bookings this month. ` +
+    `${below.length ? `${below.length} market${below.length > 1 ? "s" : ""} below the ${CONN_TARGET}% target` : "All markets at or above target"}` +
+    `${unattributed ? `, ${unattributed.total} leads need market attribution` : ""}.`;
+
+  const staleMs = updated ? Date.now() - updated.getTime() : 0;
+  const stale = staleMs > 3 * 60 * 60 * 1000;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <p className="text-sm text-slate-400">LSA Performance — {months[month - 1]} {year}</p>
-            {lastUpdated && (() => {
-              const stale = (Date.now() - lastUpdated.getTime()) > 3 * 60 * 60 * 1000; // >3h = pipeline likely stuck
-              const label = lastUpdated.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-              return <span className={`text-[10px] rounded-full px-2 py-0.5 border ${stale ? "text-amber-700 bg-amber-50 border-amber-200 font-medium" : "text-slate-300 border-slate-200"}`}>
-                {stale ? "⚠ Data from " : "Updated "}{label}
-              </span>;
-            })()}
-            <span className="text-[10px] text-blue-500 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 font-medium">All In</span>
+    <div className="space-y-6">
+      {/* page header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink-900">Overview</h1>
+          <p className="text-[13px] text-ink-500 mt-1">The month at a glance — what's happening, what changed, what needs attention.</p>
+          <div className="flex items-center gap-2.5 mt-3">
+            <StatusChip tone={isCurrent ? "info" : "neutral"}>
+              {isCurrent ? "In progress · settles after month end" : "Final"}
+            </StatusChip>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-400">
+              <span className={`h-1.5 w-1.5 rounded-full ${stale ? "bg-caution" : "bg-accent"}`} />
+              {updated ? `Synced ${updated.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "No sync data"}
+            </span>
           </div>
         </div>
-        <div className="flex gap-0.5 bg-white rounded-lg border border-slate-200 p-0.5">
+        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
           {months.map((m, i) => (
             <button key={m} onClick={() => setMonth(i + 1)}
-              className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-all ${
-                month === i + 1 ? "bg-slate-900 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-              }`}>{m}</button>
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white shadow-sm" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
           ))}
         </div>
       </div>
 
-      <AlertStrip marketData={data.marketData} navigate={navigate} />
+      {/* narrative */}
+      <Section className="border-l-[3px] border-l-accent"><Narrative>{narrative}</Narrative></Section>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
-        <KpiCard label="Total Calls" value={data.total.toLocaleString()} icon="📞" accent="bg-blue-50"
-          sub={totalDelta != null ? `${totalDelta >= 0 ? "+" : ""}${totalDelta} vs ${pm}` : null}
-          trend={totalDelta > 0 ? "up" : totalDelta < 0 ? "down" : null} />
-        <KpiCard label="Charged" value={data.charged.toLocaleString()} icon="💰" accent="bg-emerald-50"
-          sub={chargedDelta != null ? `${chargedDelta >= 0 ? "+" : ""}${chargedDelta} vs ${pm}` : null}
-          trend={chargedDelta > 0 ? "up" : chargedDelta < 0 ? "down" : null} />
-        <KpiCard label="Connected" value={data.connected.toLocaleString()} icon="✅" accent="bg-emerald-50" />
-        <KpiCard label="Missed" value={data.missed.toLocaleString()} icon="📵" accent="bg-red-50"
-          sub={missedDelta != null ? `${missedDelta >= 0 ? "+" : ""}${missedDelta} vs ${pm}` : null}
-          trend={missedDelta != null ? (missedDelta > 0 ? "down" : missedDelta < 0 ? "up" : null) : null} />
-        <KpiCard label="Non-Charged" value={data.nonCharged.toLocaleString()} icon="🔕" accent="bg-slate-50" />
-        <KpiCard label="Conn. Rate" value={`${data.connRate.toFixed(1)}%`} icon="📈"
-          accent={data.connRate >= 95 ? "bg-emerald-50" : "bg-amber-50"}
-          sub={rateDelta != null ? `${rateDelta >= 0 ? "+" : ""}${rateDelta} pts vs ${pm}` : null}
-          trend={parseFloat(rateDelta) > 0 ? "up" : parseFloat(rateDelta) < 0 ? "down" : null} />
-        <KpiCard label="Booked" value={data.booked.toLocaleString()} icon="📅" accent="bg-emerald-50"
-          sub={bookedDelta != null ? `${bookedDelta >= 0 ? "+" : ""}${bookedDelta} vs ${pm}` : null}
-          trend={bookedDelta > 0 ? "up" : bookedDelta < 0 ? "down" : null} />
-        <KpiCard label="Disputes" value={data.disputes.toLocaleString()} icon="⚖️" accent="bg-slate-50" />
+      {/* needs attention strip */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-400 mr-1">Needs attention</span>
+        {below.slice(0, 3).map((m) => (
+          <button key={m.market_name} onClick={() => navigate(`/markets?market=${encodeURIComponent(m.market_name)}`)}
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium border-critical/20 bg-critical-50 text-critical hover:bg-critical-50/70 transition-colors">
+            <CircleAlert size={13} /> {m.market_name} {m.connRate.toFixed(0)}%
+          </button>
+        ))}
+        {unattributed && (
+          <button onClick={() => navigate("/insights")}
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium border-steel/20 bg-steel-50 text-steel hover:bg-steel-50/70 transition-colors">
+            {unattributed.total} leads need attribution
+          </button>
+        )}
+        {below.length === 0 && !unattributed && <StatusChip tone="positive">No issues need attention</StatusChip>}
+        <button onClick={() => navigate("/insights")} className="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-accent hover:text-accent-600">
+          Attention <ChevronRight size={14} />
+        </button>
       </div>
 
-      {data.completed != null && (
-        <div className="-mt-4 mb-8">
-          <SectionHeader title="Bookings — Salesforce" subtitle="Salesforce opps created this month" />
-          <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-3 inline-block">
-            ⚠ These figures come from the current Salesforce feed, which is filtered by lead source. Earlier months understate Completed &amp; Revenue until the feed is widened to all LSA lead sources. Call metrics above are unaffected.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiCard label="Completed" value={data.completed.toLocaleString()} icon="✅" accent="bg-emerald-50" />
-            <KpiCard label="Pending" value={data.pending.toLocaleString()} icon="⏳" accent="bg-amber-50" />
-            <KpiCard label="Canceled" value={data.canceled.toLocaleString()} icon="🚫" accent="bg-red-50" />
-            <KpiCard label="Completed Revenue" value={`$${Math.round(data.completedRevenue).toLocaleString()}`} icon="💵" accent="bg-emerald-50" />
+      {/* Call System — one card per metric */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-[13px] font-semibold text-ink-800">Call System (LSA)</h2>
+          <SourceTag source="call" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <KpiCard label="Total calls" value={data.total.toLocaleString()} icon={Phone} tone="neutral"
+            delta={delta(data.total, prev?.total)} deltaLabel={pm ? `vs ${pm}` : ""} />
+          <KpiCard label="Billable" value={data.charged.toLocaleString()} icon={Receipt} tone="accent" definition="Charged calls, disputes backed out." />
+          <KpiCard label="Connected" value={data.connected.toLocaleString()} icon={PhoneCall} tone="accent" />
+          <KpiCard label="Missed" value={data.missed.toLocaleString()} icon={PhoneMissed} tone="critical"
+            delta={delta(data.missed, prev?.missed)} deltaLabel={pm ? `vs ${pm}` : ""} deltaGoodIsUp={false} />
+          <KpiCard label="Non-billable" value={data.nonCharged.toLocaleString()} icon={BellOff} tone="neutral" />
+          <KpiCard label="Conn. rate" value={data.connRate.toFixed(1)} unit="%" icon={Activity} tone="accent"
+            delta={rateDelta} deltaLabel={pm ? `pts vs ${pm}` : ""} definition="Connected ÷ (Connected + Missed), billable calls only." />
+          <KpiCard label="Disputes" value={data.disputes.toLocaleString()} icon={Scale} tone="neutral" />
+        </div>
+        <div className="mt-3 bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] px-4 py-3.5">
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full">
+            {segs.map((s) => <div key={s.label} style={{ width: `${(s.value / classTotal) * 100}%`, background: s.color }} />)}
           </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
-          <SectionHeader title="Call Volume Trend" subtitle="Monthly total calls — 2026" />
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={allMonths}>
-              <defs><linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.12}/><stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-              <XAxis dataKey="name" tick={{fontSize:11,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fontSize:11,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
-              <Tooltip content={<ChartTooltip/>}/>
-              <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2.5} fill="url(#gC)" name="Total Calls" dot={{r:4,fill:"#3b82f6",strokeWidth:2,stroke:"#fff"}}/>
-              <Area type="monotone" dataKey="booked" stroke="#10b981" strokeWidth={2} fill="none" name="Booked" dot={{r:3,fill:"#10b981",strokeWidth:2,stroke:"#fff"}} strokeDasharray="5 5"/>
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <SectionHeader title="Classification" subtitle={`${months[month-1]} breakdown`}/>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={3} dataKey="value" strokeWidth={0}>
-              {pieData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip content={<ChartTooltip/>}/></PieChart>
-          </ResponsiveContainer>
-          <div className="flex justify-center gap-4 mt-1">
-            {pieData.map((dd,i)=>(<div key={i} className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{background:dd.color}}/><span className="text-[11px] text-slate-500">{dd.name}</span><span className="text-[11px] font-bold text-slate-700">{dd.value}</span></div>))}
+          <div className="mt-2.5 flex flex-wrap gap-4">
+            {segs.map((s) => (
+              <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-ink-500">
+                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />{s.label}
+                <span className="font-semibold text-ink-700 tnum">{s.value.toLocaleString()}</span>
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <SectionHeader title="Connection Rate Trend" subtitle="Monthly %"/>
+      {/* Salesforce — one card per metric */}
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-[13px] font-semibold text-ink-800">Salesforce — bookings &amp; revenue</h2>
+          <SourceTag source="sf" />
+        </div>
+        <p className="text-[12px] text-ink-400 mb-3">Opps created this month</p>
+        {isCurrent && <Caveat className="mb-3">Salesforce figures cover the LSA lead source only and update hourly; this month may understate until it settles.</Caveat>}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <KpiCard label="Bookings" value={(sf?.booked || 0).toLocaleString()} icon={CalendarCheck} tone="accent"
+            delta={delta(sf?.booked, sfPrev?.booked)} deltaLabel={pm ? `vs ${pm}` : ""} definition="All Salesforce opps created this month (any lead source)." />
+          <KpiCard label="Completed" value={(sf?.completed || 0).toLocaleString()} icon={CircleCheck} tone="accent" />
+          <KpiCard label="Pending" value={(sf?.pending || 0).toLocaleString()} icon={Clock} tone="neutral" />
+          <KpiCard label="Canceled" value={(sf?.canceled || 0).toLocaleString()} icon={CircleX} tone="critical" />
+          <KpiCard label="Completed revenue" value={`$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`} icon={DollarSign} tone="accent" />
+        </div>
+        <div className="mt-3">
+          <Reconcile>
+            Salesforce shows <b className="text-ink-700">{(sf?.booked || 0).toLocaleString()}</b> bookings this month;{" "}
+            <b className="text-ink-700">{data.booked.toLocaleString()}</b> tie to an LSA lead
+            {sf && sf.booked > data.booked && <> — {(sf.booked - data.booked).toLocaleString()} booked through other channels</>}.
+          </Reconcile>
+        </div>
+      </div>
+
+      {/* trends */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Section title="Connection rate — 2026" source="call" right={<span className="text-[11px] text-ink-400">dashed = {CONN_TARGET}% target</span>}>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={allMonths}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-              <XAxis dataKey="name" tick={{fontSize:11,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
-              <YAxis domain={["dataMin - 2","dataMax + 1"]} tick={{fontSize:11,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
-              <Tooltip content={<ChartTooltip suffix="%"/>}/>
-              <Line type="monotone" dataKey="connectionRate" stroke="#10b981" strokeWidth={2.5} name="Rate" dot={{r:4,fill:"#10b981",strokeWidth:2,stroke:"#fff"}}/>
+            <LineChart data={allMonths} margin={{ left: -16, right: 8, top: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.ink100} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: C.ink400 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[85, 100]} tick={{ fontSize: 11, fill: C.ink400 }} axisLine={false} tickLine={false} />
+              <Tooltip content={<ChartTip suffix="%" />} />
+              <ReferenceLine y={CONN_TARGET} stroke={C.ink300} strokeDasharray="4 4" />
+              <Line type="monotone" dataKey="connectionRate" stroke={C.accent} strokeWidth={2} name="Rate" dot={{ r: 3, fill: C.accent }} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <SectionHeader title="Hourly Distribution" subtitle={`Leads by hour — ${months[month-1]} CST`}/>
+        </Section>
+        <Section title="Lead volume — 2026" source="call">
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={hourlyData} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-              <XAxis dataKey="hour" tick={{fontSize:9,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fontSize:11,fill:"#94a3b8"}} axisLine={false} tickLine={false}/>
-              <Tooltip content={<ChartTooltip/>}/>
-              <Bar dataKey="connected" stackId="a" fill="#10b981" name="Connected"/>
-              <Bar dataKey="missed" stackId="a" fill="#ef4444" name="Missed"/>
-              <Bar dataKey="nonCharged" stackId="a" fill="#e2e8f0" name="Non-Charged" radius={[3,3,0,0]}/>
-            </BarChart>
+            <AreaChart data={allMonths} margin={{ left: -16, right: 8, top: 8 }}>
+              <defs><linearGradient id="vol" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.steel} stopOpacity={0.14} /><stop offset="100%" stopColor={C.steel} stopOpacity={0} /></linearGradient></defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.ink100} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: C.ink400 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.ink400 }} axisLine={false} tickLine={false} />
+              <Tooltip content={<ChartTip />} />
+              <Area type="monotone" dataKey="total" stroke={C.steel} strokeWidth={2} fill="url(#vol)" name="Leads" dot={{ r: 3, fill: C.steel }} />
+            </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </Section>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <SectionHeader title="Market Performance" subtitle={`${months[month-1]} ${year} — ${data.marketData.length} markets`}/>
-          <button onClick={()=>navigate("/markets")} className="text-[11px] font-medium text-blue-600 hover:text-blue-800 transition-colors">View all →</button>
-        </div>
-        <div className="overflow-x-auto">
+      {/* hourly */}
+      {hourly.length > 0 && (
+        <Section title={`Leads by hour — ${months[month - 1]} (CST)`} source="call">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={hourly} barCategoryGap="22%" margin={{ left: -16, right: 8, top: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.ink100} vertical={false} />
+              <XAxis dataKey="hour" tick={{ fontSize: 9, fill: C.ink400 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.ink400 }} axisLine={false} tickLine={false} />
+              <Tooltip content={<ChartTip />} />
+              <Bar dataKey="connected" stackId="a" fill={C.accent} name="Connected" />
+              <Bar dataKey="missed" stackId="a" fill={C.critical} name="Missed" />
+              <Bar dataKey="nonCharged" stackId="a" fill={C.ink300} name="Non-billable" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Section>
+      )}
+
+      {/* markets — ranked worst-first */}
+      <Section title="Markets — ranked by need" source="call"
+        right={<button onClick={() => navigate("/markets")} className="inline-flex items-center gap-1 text-[12px] font-medium text-accent hover:text-accent-600">All markets <ArrowUpRight size={14} /></button>}>
+        <div className="overflow-x-auto -mx-1">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50/80">
-              {["Market","Total","Charged","Connected","Missed","Conn. Rate","Booked"].map((h,i)=>(
-                <th key={h} className={`px-5 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider ${i>0?"text-right":"text-left"}`}>{h}</th>
-              ))}</tr></thead>
+            <thead>
+              <tr className="text-left">
+                {["Market","Leads","Billable","Connected","Missed","Conn. rate","Bookings"].map((h, i) => (
+                  <th key={h} className={`pb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-400 ${i > 0 ? "text-right" : ""}`}>{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {data.marketData.filter(m=>m.market_name!=="Out of Area").map((m,i)=>(
-                <tr key={m.market_name} onClick={()=>navigate(`/markets?market=${encodeURIComponent(m.market_name)}`)}
-                  className={`border-t border-slate-50 cursor-pointer transition-colors hover:bg-blue-50/40 ${i%2?"bg-slate-50/30":""}`}>
-                  <td className="px-5 py-3 font-semibold text-slate-800 text-[13px]">{m.market_name}</td>
-                  <td className="px-5 py-3 text-right text-slate-600 tabular-nums">{m.total}</td>
-                  <td className="px-5 py-3 text-right text-slate-600 tabular-nums">{m.charged}</td>
-                  <td className="px-5 py-3 text-right text-slate-600 tabular-nums">{m.connected}</td>
-                  <td className="px-5 py-3 text-right tabular-nums"><span className={m.missed>0?"text-red-600 font-semibold":"text-slate-600"}>{m.missed}</span></td>
-                  <td className="px-5 py-3 text-right"><RateBadge rate={m.connRate}/></td>
-                  <td className="px-5 py-3 text-right text-slate-600 tabular-nums font-medium">{m.booked}</td>
+              {ranked.map((m) => (
+                <tr key={m.market_name} onClick={() => navigate(`/markets?market=${encodeURIComponent(m.market_name)}`)}
+                  className="border-t border-ink-50 cursor-pointer hover:bg-ink-50/60 transition-colors">
+                  <td className="py-2.5 font-semibold text-ink-800 text-[13px]">{m.market_name}</td>
+                  <td className="py-2.5 text-right text-ink-600 tnum">{m.total}</td>
+                  <td className="py-2.5 text-right text-ink-600 tnum">{m.charged}</td>
+                  <td className="py-2.5 text-right text-ink-600 tnum">{m.connected}</td>
+                  <td className="py-2.5 text-right tnum"><span className={m.missed > 0 ? "text-critical font-semibold" : "text-ink-600"}>{m.missed}</span></td>
+                  <td className="py-2.5 text-right"><RateChip value={m.connRate / 100} target={CONN_TARGET / 100} /></td>
+                  <td className="py-2.5 text-right text-ink-700 tnum font-medium">{m.booked}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+        {unattributed && (
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-steel-50 border border-steel/15 px-3 py-2">
+            <span className="text-[12px] text-steel">
+              <b>Unattributed</b> — {unattributed.total} leads with no market from the source (data issue, not a market).
+            </span>
+            <button onClick={() => navigate("/insights")} className="text-[12px] font-medium text-steel hover:underline">Why? →</button>
+          </div>
+        )}
+      </Section>
     </div>
   );
 }

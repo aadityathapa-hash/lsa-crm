@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { Upload, FileText, CheckCircle2, XCircle } from "lucide-react";
 
 // Market mapping from account_id to market name
 const ACCOUNT_TO_MARKET = {
@@ -192,40 +193,43 @@ export default function CsvUpload() {
 
   if (!isAdmin) {
     return (
-      <div className="text-center py-20 text-slate-400">
+      <div className="text-center py-20 text-ink-400">
         Admin access required for CSV upload.
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-xl font-bold text-slate-900 mb-1">Import LSA Data</h1>
-      <p className="text-sm text-slate-400 mb-6">Upload a Google Ads LSA detailed report CSV to import leads into the CRM.</p>
+    <div className="max-w-4xl mx-auto space-y-5">
+      <div>
+        <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink-900">Import LSA data</h1>
+        <p className="text-[13px] text-ink-500 mt-1">Upload a Google Ads LSA detailed report CSV to import leads into the CRM.</p>
+      </div>
 
       {/* Upload area */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+      <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
         <div className="flex items-center gap-4 mb-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Month</label>
+            <label className="block text-[12px] text-ink-400 mb-1">Month</label>
             <select value={month} onChange={e => setMonth(parseInt(e.target.value))}
-              className="border border-slate-200 rounded-md px-3 py-2 text-sm bg-white">
+              className="border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-white outline-none focus:border-accent">
               {months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Year</label>
+            <label className="block text-[12px] text-ink-400 mb-1">Year</label>
             <input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))}
-              className="border border-slate-200 rounded-md px-3 py-2 text-sm w-24" />
+              className="border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-white w-24 outline-none focus:border-accent" />
           </div>
         </div>
 
-        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-colors">
+        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-ink-200 rounded-lg cursor-pointer hover:bg-ink-50 hover:border-accent transition-colors">
           <div className="text-center">
-            <p className="text-sm font-medium text-slate-600">
+            <Upload size={20} className="mx-auto mb-2 text-ink-400" strokeWidth={2} />
+            <p className="text-sm font-semibold text-ink-600">
               {file ? file.name : "Click to select CSV file"}
             </p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-[12px] text-ink-400 mt-1">
               {file ? `${(file.size / 1024).toFixed(1)} KB` : "Google Ads LSA Detailed Report export"}
             </p>
           </div>
@@ -235,40 +239,40 @@ export default function CsvUpload() {
 
       {/* Preview */}
       {preview && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-slate-800 mb-4">Preview</h2>
-          
+        <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
+          <h2 className="text-[13px] font-semibold text-ink-800 mb-4">Preview</h2>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs text-slate-400">Total Rows</p>
-              <p className="text-xl font-bold text-slate-900">{preview.totalRows}</p>
+            <div className="bg-ink-50 rounded-lg p-3">
+              <p className="text-[12px] text-ink-400">Total rows</p>
+              <p className="text-xl font-bold text-ink-900 tnum">{preview.totalRows}</p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs text-slate-400">Valid Leads</p>
-              <p className="text-xl font-bold text-green-600">{preview.validLeads}</p>
+            <div className="bg-ink-50 rounded-lg p-3">
+              <p className="text-[12px] text-ink-400">Valid leads</p>
+              <p className="text-xl font-bold text-positive tnum">{preview.validLeads}</p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs text-slate-400">Charged</p>
-              <p className="text-xl font-bold text-slate-900">{preview.charged}</p>
+            <div className="bg-ink-50 rounded-lg p-3">
+              <p className="text-[12px] text-ink-400">Charged</p>
+              <p className="text-xl font-bold text-ink-900 tnum">{preview.charged}</p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs text-slate-400">With Duration</p>
-              <p className="text-xl font-bold text-slate-900">{preview.withDuration}</p>
+            <div className="bg-ink-50 rounded-lg p-3">
+              <p className="text-[12px] text-ink-400">With duration</p>
+              <p className="text-xl font-bold text-ink-900 tnum">{preview.withDuration}</p>
             </div>
           </div>
 
-          <h3 className="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">Market Breakdown</h3>
+          <h3 className="text-[10.5px] font-semibold text-ink-400 uppercase tracking-wider mb-2">Market breakdown</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-1 mb-4">
             {preview.markets.map(([market, count]) => (
-              <div key={market} className="flex justify-between text-sm px-2 py-1 bg-slate-50 rounded">
-                <span className="text-slate-600">{market}</span>
-                <span className="font-medium text-slate-800">{count}</span>
+              <div key={market} className="flex justify-between text-sm px-2 py-1 bg-ink-50 rounded">
+                <span className="text-ink-600">{market}</span>
+                <span className="font-semibold text-ink-800 tnum">{count}</span>
               </div>
             ))}
           </div>
 
           <button onClick={handleUpload} disabled={uploading}
-            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50">
+            className="bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
             {uploading ? "Importing..." : `Import ${preview.validLeads} leads for ${months[month - 1]} ${year}`}
           </button>
         </div>
@@ -276,23 +280,27 @@ export default function CsvUpload() {
 
       {/* Result */}
       {result && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">
-          ✅ Successfully imported {result.inserted} leads for {result.month} {result.year}. Dashboard will reflect the new data immediately.
+        <div className="flex items-start gap-2 bg-positive-50 border border-positive/20 rounded-lg p-4 text-sm text-positive">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0" strokeWidth={2} />
+          <span>Successfully imported {result.inserted} leads for {result.month} {result.year}. Dashboard will reflect the new data immediately.</span>
         </div>
       )}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
-          ❌ {error}
+        <div className="flex items-start gap-2 bg-critical-50 border border-critical/20 rounded-lg p-4 text-sm text-critical">
+          <XCircle size={16} className="mt-0.5 shrink-0" strokeWidth={2} />
+          <span>{error}</span>
         </div>
       )}
 
       {/* Instructions */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-        <h3 className="text-sm font-semibold text-blue-800 mb-2">How to export from Google Ads</h3>
-        <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
-          <li>Go to Google Ads → Local Services Ads → Leads</li>
+      <div className="bg-steel-50 border border-steel/20 rounded-lg p-4">
+        <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-steel mb-2">
+          <FileText size={14} strokeWidth={2} /> How to export from Google Ads
+        </h3>
+        <ol className="text-[12px] text-steel space-y-1 list-decimal list-inside">
+          <li>Go to Google Ads, Local Services Ads, Leads</li>
           <li>Set the date range to the month you want to import</li>
-          <li>Click the download icon → "Detailed report" → CSV</li>
+          <li>Click the download icon, "Detailed report", CSV</li>
           <li>Upload the CSV file here</li>
           <li>Verify the preview, then click Import</li>
         </ol>
