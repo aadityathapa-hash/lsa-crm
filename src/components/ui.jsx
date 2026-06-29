@@ -2,6 +2,20 @@
 // Monochrome + one accent + status semantics. No emoji, tabular numerals, hairlines.
 import { Info } from "lucide-react";
 
+/* ---------- Brand mark (Concept D — performance bars) ---------- */
+export function Logo({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" role="img" aria-label="LSA Operations">
+      <rect width="40" height="40" rx="10" fill="#1f7a52" />
+      <g fill="#fff">
+        <rect x="10" y="22" width="4.6" height="8" rx="1.6" />
+        <rect x="17.7" y="16" width="4.6" height="14" rx="1.6" />
+        <rect x="25.4" y="10" width="4.6" height="20" rx="1.6" />
+      </g>
+    </svg>
+  );
+}
+
 /* ---------- Source / provenance tag (the trust spine) ---------- */
 const SOURCE = {
   "call":   { label: "Call System",     cls: "text-steel bg-steel-50 border-steel/20" },
@@ -60,44 +74,70 @@ export function Delta({ value, label, goodIsUp = true }) {
   );
 }
 
+/* ---------- Sparkline (inline SVG, no deps) ---------- */
+export function Sparkline({ data, color = "#1f7a52", w = 96, h = 34 }) {
+  if (!data || data.length < 2) return null;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const x = (i) => (i / (data.length - 1)) * w;
+  const y = (v) => h - 3 - ((v - min) / range) * (h - 6);
+  const line = data.map((v, i) => `${x(i)},${y(v)}`).join(" ");
+  const area = `0,${h} ${line} ${w},${h}`;
+  const gid = `sg-${color.replace("#", "")}`;
+  return (
+    <svg width={w} height={h} className="overflow-visible block">
+      <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={color} stopOpacity="0.16" /><stop offset="100%" stopColor={color} stopOpacity="0" />
+      </linearGradient></defs>
+      <polygon points={area} fill={`url(#${gid})`} />
+      <polyline points={line} fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={x(data.length - 1)} cy={y(data[data.length - 1])} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
 /* ---------- Metric (headline / supporting) ---------- */
-export function Metric({ label, value, unit, source, delta, deltaLabel, deltaGoodIsUp = true, sub, size = "supporting", definition }) {
+export function Metric({ label, value, unit, source, delta, deltaLabel, deltaGoodIsUp = true, sub, size = "supporting", definition, spark, sparkColor }) {
   const big = size === "headline";
   return (
-    <div className="min-w-0">
-      <div className="flex items-center gap-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">{label}</span>
-        {source && <SourceTag source={source} title={definition} />}
-        {definition && !source && <span title={definition}><Info size={12} className="text-ink-300" /></span>}
-      </div>
-      <div className={`mt-1 font-bold tracking-tight text-ink-900 tnum leading-none ${big ? "text-[34px]" : "text-2xl"}`}>
-        {value}{unit && <span className="text-ink-400 font-semibold text-[0.55em] ml-0.5">{unit}</span>}
-      </div>
-      {(delta != null || sub) && (
-        <div className="mt-1.5 flex items-center gap-2">
-          {delta != null && <Delta value={delta} label={deltaLabel} goodIsUp={deltaGoodIsUp} />}
-          {sub && <span className="text-[11px] text-ink-400">{sub}</span>}
+    <div className="flex items-start justify-between gap-3 min-w-0">
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-400">{label}</span>
+          {source && <SourceTag source={source} title={definition} />}
+          {definition && !source && <span title={definition}><Info size={12} className="text-ink-300" /></span>}
         </div>
-      )}
+        <div className={`mt-2 font-bold tracking-[-0.025em] text-ink-900 tnum leading-none ${big ? "text-[42px]" : "text-[27px]"}`}>
+          {value}{unit && <span className="text-ink-300 font-semibold text-[0.46em] ml-0.5 align-baseline">{unit}</span>}
+        </div>
+        {(delta != null || sub) && (
+          <div className="mt-2.5 flex items-center gap-2">
+            {delta != null && <Delta value={delta} label={deltaLabel} goodIsUp={deltaGoodIsUp} />}
+            {sub && <span className="text-[11px] text-ink-400">{sub}</span>}
+          </div>
+        )}
+      </div>
+      {spark && big && <div className="shrink-0 pt-1.5"><Sparkline data={spark} color={sparkColor} /></div>}
     </div>
   );
 }
 
-/* ---------- Section card (border earns its place) ---------- */
-export function Section({ title, source, right, note, children, className = "" }) {
+/* ---------- Section card (subtle depth; optional accent keyline) ---------- */
+export function Section({ title, source, right, note, children, className = "", accent, pad = true }) {
   return (
-    <section className={`bg-white rounded-[12px] border border-ink-100 ${className}`}>
+    <section
+      className={`relative bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] ${accent ? "overflow-hidden" : ""} ${className}`}>
+      {accent && <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent }} aria-hidden />}
       {(title || right) && (
-        <header className="flex items-center justify-between px-5 pt-4 pb-3">
+        <header className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-ink-50">
           <div className="flex items-center gap-2">
-            {title && <h2 className="text-[13px] font-semibold text-ink-800">{title}</h2>}
+            {title && <h2 className="text-[13px] font-semibold text-ink-800 tracking-tight">{title}</h2>}
             {source && <SourceTag source={source} />}
           </div>
           {right}
         </header>
       )}
-      {note && <Caveat className="mx-5 mb-3">{note}</Caveat>}
-      <div className={title ? "px-5 pb-5" : "p-5"}>{children}</div>
+      {note && <Caveat className="mx-5 mt-3">{note}</Caveat>}
+      <div className={pad ? (title ? "p-5" : "p-5") : ""}>{children}</div>
     </section>
   );
 }

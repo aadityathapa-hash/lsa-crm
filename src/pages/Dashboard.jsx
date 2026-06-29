@@ -215,34 +215,30 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* page header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink-900">Overview</h1>
-          <p className="text-[13px] text-ink-500 mt-0.5">The month at a glance — what's happening, what changed, what needs attention.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded border ${stale ? "text-caution bg-caution-50 border-caution/20" : "text-ink-500 border-ink-200"}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${stale ? "bg-caution" : "bg-accent"}`} />
-            {updated ? `Synced ${updated.toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}` : "No sync data"}
-          </span>
-          <div className="flex gap-0.5 bg-white rounded-lg border border-ink-200 p-0.5">
-            {months.map((m, i) => (
-              <button key={m} onClick={() => setMonth(i + 1)}
-                className={`px-2 py-1 text-[11px] font-semibold rounded transition-colors ${month === i + 1 ? "bg-accent text-white" : "text-ink-400 hover:text-ink-700"}`}>{m}</button>
-            ))}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink-900">Overview</h1>
+          <p className="text-[13px] text-ink-500 mt-1">The month at a glance — what's happening, what changed, what needs attention.</p>
+          <div className="flex items-center gap-2.5 mt-3">
+            <StatusChip tone={isCurrent ? "info" : "neutral"}>
+              {isCurrent ? "In progress · settles after month end" : "Final"}
+            </StatusChip>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-400">
+              <span className={`h-1.5 w-1.5 rounded-full ${stale ? "bg-caution" : "bg-accent"}`} />
+              {updated ? `Synced ${updated.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "No sync data"}
+            </span>
           </div>
         </div>
-      </div>
-
-      {/* completeness stamp */}
-      <div className="-mt-3">
-        <StatusChip tone={isCurrent ? "info" : "neutral"}>
-          {isCurrent ? `In progress — updates hourly, settles after month end` : "Final"}
-        </StatusChip>
+        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
+          {months.map((m, i) => (
+            <button key={m} onClick={() => setMonth(i + 1)}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white shadow-sm" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
+          ))}
+        </div>
       </div>
 
       {/* narrative */}
-      <Section><Narrative>{narrative}</Narrative></Section>
+      <Section className="border-l-[3px] border-l-accent"><Narrative>{narrative}</Narrative></Section>
 
       {/* needs attention strip */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -268,16 +264,19 @@ export default function Dashboard() {
       {/* headline KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Section><Metric size="headline" label="Lead Volume" source="call" value={data.total.toLocaleString()}
+          spark={allMonths.map(m => m.total)} sparkColor="#2b5c8a"
           delta={delta(data.total, prev?.total)} deltaLabel={pm ? `vs ${pm}` : ""} /></Section>
         <Section><Metric size="headline" label="Connection Rate" source="call" value={data.connRate.toFixed(1)} unit="%"
+          spark={allMonths.map(m => m.connectionRate)} sparkColor="#1f7a52"
           sub={`target ${CONN_TARGET}%`} delta={rateDelta} deltaLabel={pm ? `pts vs ${pm}` : ""} definition="Connected ÷ (Connected + Missed), billable calls only." /></Section>
         <Section><Metric size="headline" label="Bookings" source="sf" value={(sf?.booked || 0).toLocaleString()}
+          spark={allMonths.map(m => m.booked)} sparkColor="#2b5c8a"
           delta={delta(sf?.booked, sfPrev?.booked)} deltaLabel={pm ? `vs ${pm}` : ""} definition="All Salesforce opps created this month (any lead source)." /></Section>
       </div>
 
       {/* two truth blocks + reconcile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Section title="Call System (LSA)" source="call">
+        <Section title="Call System (LSA)" source="call" accent="#1f7a52">
           <div className="grid grid-cols-3 gap-y-4">
             <Metric label="Billable" value={data.charged.toLocaleString()} definition="Charged calls, disputes backed out." />
             <Metric label="Connected" value={data.connected.toLocaleString()} />
@@ -302,7 +301,7 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        <Section title="Salesforce — bookings & revenue" source="sf"
+        <Section title="Salesforce — bookings & revenue" source="sf" accent="#2b5c8a"
           note={!isCurrent ? undefined : "Salesforce figures cover the LSA lead source only and update hourly; this month may understate until it settles."}>
           <div className="grid grid-cols-2 gap-y-4">
             <Metric label="Completed" value={(sf?.completed || 0).toLocaleString()} />

@@ -6,6 +6,7 @@ import {
   LayoutGrid, CalendarClock, ListFilter, Users, Map, AlertTriangle,
   PhoneOutgoing, Upload, Settings2,
 } from "lucide-react";
+import { Logo } from "./ui";
 
 // Grouped by the operator's workflow: Monitor → Investigate → Manage.
 // Routes are unchanged; labels + icons are the redesign.
@@ -49,8 +50,8 @@ export default function Layout({ children }) {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14">
             <div className="flex items-center gap-2.5">
-              <span className="h-5 w-1 rounded-full bg-accent" aria-hidden />
-              <span className="text-[15px] font-bold tracking-tight text-ink-900">LSA Operations</span>
+              <Logo size={26} />
+              <span className="text-[15px] tracking-tight text-ink-900"><span className="font-bold">LSA</span> Operations</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <span className="text-ink-500">{profile?.full_name || profile?.email}</span>
