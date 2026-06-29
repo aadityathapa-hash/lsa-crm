@@ -6,36 +6,42 @@
    Exposed as Tailwind v4 utilities: text-ink-900, bg-accent, etc.
    ============================================================ */
 @theme {
-  /* neutrals — slightly warm graphite ramp */
-  --color-ink-900: #14181f;
-  --color-ink-800: #232a35;
-  --color-ink-700: #3a4150;
-  --color-ink-600: #525a6b;
-  --color-ink-500: #6b7484;
-  --color-ink-400: #8a92a1;
-  --color-ink-300: #b4bac6;
-  --color-ink-200: #d8dce3;
-  --color-ink-100: #e7e9ee;
-  --color-ink-50:  #f2f4f7;
-  --color-canvas:  #f7f8fa;
+  /* neutrals — cool blue-gray ramp (handoff palette) */
+  --color-ink-900: #101828;   /* headings, numbers */
+  --color-ink-800: #1d2939;
+  --color-ink-700: #344054;   /* body strong */
+  --color-ink-600: #475467;   /* body */
+  --color-ink-500: #667085;   /* secondary */
+  --color-ink-400: #98a2b3;   /* muted labels, captions */
+  --color-ink-300: #cdd2dc;   /* faint / disabled */
+  --color-ink-200: #e6e9f0;   /* input borders */
+  --color-ink-100: #e9ecf3;   /* card borders */
+  --color-ink-50:  #f4f6fa;   /* hairlines, row hover */
+  --color-canvas:  #eef1f6;   /* page background */
 
-  /* one brand-anchored accent — deep, desaturated "signal green" */
-  --color-accent:    #1f7a52;
-  --color-accent-600:#1a6846;
-  --color-accent-50: #eaf3ee;
+  /* brand accent — indigo (theme-able single token) */
+  --color-accent:    #465fff;
+  --color-accent-600:#3a51e6;
+  --color-accent-50: #eef1ff;
 
   /* status semantics — used only to MEAN something */
-  --color-positive:   #1f7a52;
-  --color-positive-50:#eaf3ee;
-  --color-caution:    #a66a00;
-  --color-caution-50: #fbf3e3;
-  --color-critical:   #b42318;
-  --color-critical-50:#fbeceb;
-  --color-steel:      #2b5c8a;   /* informational / source-blend */
-  --color-steel-50:   #ebf1f7;
+  --color-positive:   #027a48;
+  --color-positive-50:#ecfdf3;
+  --color-caution:    #b54708;
+  --color-caution-50: #fffaeb;
+  --color-critical:   #d92d20;
+  --color-critical-50:#fef3f2;
+  --color-steel:      #0e7090;   /* informational / Salesforce */
+  --color-steel-50:   #e0f2fe;
 
-  --radius-card: 12px;
-  --shadow-pop: 0 10px 30px -12px rgba(20,24,31,.18);
+  /* chart-specific (handoff) */
+  --color-spark:     #bcc9ff;    /* secondary "connected" line */
+  --color-missed:    #f97066;    /* donut missed */
+  --color-neutral-bar:#d0d5dd;   /* donut non-billable */
+
+  --radius-card: 16px;
+  --shadow-card: 0 1px 2px rgba(16,24,40,.04);
+  --shadow-pop: 0 10px 30px -12px rgba(16,24,40,.14);
 }
 
 :root { color-scheme: light; }
@@ -44,11 +50,10 @@ html, body, #root { height: 100%; }
 body {
   background: var(--color-canvas);
   color: var(--color-ink-900);
-  font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Outfit Variable", Outfit, "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-feature-settings: "cv05" 1, "ss01" 1; /* refined Inter glyphs */
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 
 /* numbers always tabular for clean alignment */

@@ -1,12 +1,12 @@
 // "Control" design-system primitives — the shared kit the redesign is built from.
 // Monochrome + one accent + status semantics. No emoji, tabular numerals, hairlines.
-import { Info } from "lucide-react";
+import { Info, ArrowUpRight } from "lucide-react";
 
 /* ---------- Brand mark (Concept D — performance bars) ---------- */
 export function Logo({ size = 28 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" role="img" aria-label="LSA Operations">
-      <rect width="40" height="40" rx="10" fill="#1f7a52" />
+      <rect width="40" height="40" rx="10" className="fill-accent" />
       <g fill="#fff">
         <rect x="10" y="22" width="4.6" height="8" rx="1.6" />
         <rect x="17.7" y="16" width="4.6" height="14" rx="1.6" />
@@ -128,12 +128,27 @@ const CHIP = {
   steel: "bg-steel-50 text-steel",
   neutral: "bg-ink-50 text-ink-400",
 };
-export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp = true, sub, icon: Icon, tone = "neutral", definition }) {
+export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp = true, sub, icon: Icon, tone = "neutral", definition, onClick }) {
+  const clickable = typeof onClick === "function";
+  const Cmp = clickable ? "button" : "div";
   return (
-    <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+    <Cmp
+      {...(clickable ? { type: "button", onClick } : {})}
+      className={`w-full text-left bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden transition-all ${clickable ? "cursor-pointer group hover:border-accent/40 hover:shadow-[0_2px_4px_rgba(20,24,31,.06),0_10px_24px_-8px_rgba(20,24,31,.14)]" : ""}`}>
       <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-ink-50">
         <span title={definition} className="text-[12px] font-medium text-ink-500 truncate">{label}</span>
-        {Icon && <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-ink-50 text-ink-400"><Icon size={14} strokeWidth={2} /></span>}
+        {Icon && (
+          <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-ink-50 text-ink-400 transition-colors ${clickable ? "group-hover:bg-accent-50 group-hover:text-accent" : ""}`}>
+            {clickable ? (
+              <>
+                <Icon size={14} strokeWidth={2} className="group-hover:hidden" />
+                <ArrowUpRight size={14} strokeWidth={2.25} className="hidden group-hover:block" />
+              </>
+            ) : (
+              <Icon size={14} strokeWidth={2} />
+            )}
+          </span>
+        )}
       </div>
       <div className="px-4 pt-3 pb-4">
         <div className="text-[27px] font-bold tracking-[-0.02em] text-ink-900 tnum leading-none">
@@ -146,7 +161,7 @@ export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp =
           </div>
         )}
       </div>
-    </div>
+    </Cmp>
   );
 }
 
@@ -210,5 +225,79 @@ export function EmptyState({ title, hint, action }) {
       {hint && <p className="text-[13px] text-ink-400 mt-1">{hint}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
+  );
+}
+
+/* ---------- Overview v2 primitives (handoff design) ---------- */
+
+// Hero KPI card — big number, icon chip, ▲/▼ delta badge.
+export function HeroKpi({ label, value, icon: Icon, deltaValue, deltaGood = true, deltaSuffix = "", deltaNote = "vs May", sub, onClick }) {
+  const clickable = typeof onClick === "function";
+  const Cmp = clickable ? "button" : "div";
+  return (
+    <Cmp {...(clickable ? { type: "button", onClick } : {})}
+      className={`w-full text-left bg-white border border-ink-100 rounded-[16px] p-[22px] flex flex-col gap-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] ${clickable ? "cursor-pointer transition-shadow hover:shadow-[0_6px_18px_-8px_rgba(16,24,40,.18)]" : ""}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-[12.5px] font-semibold tracking-[0.4px] text-ink-400 uppercase">{label}</span>
+        <span className="w-10 h-10 rounded-[12px] bg-accent-50 text-accent flex items-center justify-center shrink-0"><Icon size={20} strokeWidth={1.8} /></span>
+      </div>
+      <div className="flex flex-col gap-2.5">
+        <span className="text-[32px] font-bold tracking-[-1px] text-ink-900 leading-none tnum">{value}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          {deltaValue != null && (
+            <span className={`inline-flex items-center gap-1 text-[12.5px] font-semibold rounded-[7px] px-1.5 py-0.5 ${deltaGood ? "text-positive bg-positive-50" : "text-critical bg-critical-50"}`}>
+              {deltaGood ? "▲" : "▼"} {deltaValue}{deltaSuffix}
+            </span>
+          )}
+          {deltaValue != null && deltaNote && <span className="text-[12.5px] text-ink-400">{deltaNote}</span>}
+          {sub && <span className="text-[12.5px] text-ink-400">{sub}</span>}
+        </div>
+      </div>
+    </Cmp>
+  );
+}
+
+// Semicircular gauge — value arc against a track. viewBox 280×168, r=120, center (140,140).
+export function Gauge({ value, max = 100 }) {
+  const f = Math.max(0, Math.min(1, (value || 0) / max));
+  const ang = Math.PI - Math.PI * f;            // π (left) → 0 (right)
+  const px = (140 + 120 * Math.cos(ang)).toFixed(2);
+  const py = (140 - 120 * Math.sin(ang)).toFixed(2);
+  return (
+    <svg viewBox="0 0 280 168" className="w-full max-w-[300px] h-auto">
+      <path d="M20 140 A120 120 0 0 1 260 140" fill="none" stroke="#eef0f5" strokeWidth="22" strokeLinecap="round" />
+      <path d={`M20 140 A120 120 0 0 1 ${px} ${py}`} fill="none" stroke="var(--color-accent)" strokeWidth="22" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Market progress bar with a fixed target tick. <85% red, 85–94% amber, ≥95% green.
+export function TargetBar({ name, value, target = 95 }) {
+  const v = Math.round(value);
+  const fill = v < 85 ? "#f04438" : v < target ? "#f79009" : "var(--color-positive)";
+  const pctColor = v < 85 ? "text-critical" : v < target ? "text-caution" : "text-positive";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[14px] font-semibold text-ink-900 truncate">{name}</span>
+        <span className={`text-[13.5px] font-bold ${pctColor} tnum`}>{v}%</span>
+      </div>
+      <div className="relative h-2 bg-ink-50 rounded-md">
+        <div className="absolute left-0 top-0 bottom-0 rounded-md" style={{ width: `${Math.min(100, v)}%`, background: fill }} />
+        <div className="absolute top-0 bottom-0 w-0.5 bg-ink-700 rounded-full" style={{ left: `${target}%` }} title={`${target}% target`} />
+      </div>
+    </div>
+  );
+}
+
+// Initials avatar with rotating tints.
+const AVA_TINTS = [["#eef1ff", "#465fff"], ["#fef0f4", "#dd2590"], ["#fff4ed", "#e04f16"], ["#ecfdf3", "#039855"], ["#e0f2fe", "#0e7090"]];
+export function Avatar({ name, i = 0, size = 38 }) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  const init = ((parts[0]?.[0] || "?") + (parts[1]?.[0] || "")).toUpperCase();
+  const [bg, fg] = AVA_TINTS[i % AVA_TINTS.length];
+  return (
+    <span style={{ background: bg, color: fg, width: size, height: size }}
+      className="rounded-full flex items-center justify-center text-[13px] font-bold shrink-0">{init}</span>
   );
 }
