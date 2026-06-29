@@ -130,15 +130,17 @@ const CHIP = {
 };
 export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp = true, icon: Icon, tone = "neutral", definition }) {
   return (
-    <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-4">
-      <div className="flex items-start justify-between gap-2">
-        <span title={definition} className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-ink-400 leading-tight pt-0.5">{label}</span>
-        {Icon && <span className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center ${CHIP[tone]}`}><Icon size={15} strokeWidth={2} /></span>}
+    <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-ink-50">
+        <span title={definition} className="text-[12px] font-medium text-ink-500 truncate">{label}</span>
+        {Icon && <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center ${CHIP[tone]}`}><Icon size={14} strokeWidth={2} /></span>}
       </div>
-      <div className="mt-2.5 text-[26px] font-bold tracking-[-0.02em] text-ink-900 tnum leading-none">
-        {value}{unit && <span className="text-ink-300 font-semibold text-[0.5em] ml-0.5">{unit}</span>}
+      <div className="px-4 pt-3 pb-4">
+        <div className="text-[27px] font-bold tracking-[-0.02em] text-ink-900 tnum leading-none">
+          {value}{unit && <span className="text-ink-300 font-semibold text-[0.5em] ml-0.5">{unit}</span>}
+        </div>
+        {delta != null && <div className="mt-2.5"><Delta value={delta} label={deltaLabel} goodIsUp={deltaGoodIsUp} /></div>}
       </div>
-      {delta != null && <div className="mt-2"><Delta value={delta} label={deltaLabel} goodIsUp={deltaGoodIsUp} /></div>}
     </div>
   );
 }
