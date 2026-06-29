@@ -3,9 +3,9 @@ import { supabase } from "../lib/supabase";
 import { Plus, Save, Pencil, RefreshCw, Settings2 } from "lucide-react";
 import { StatusChip, EmptyState } from "../components/ui";
 
-const cardCls = "bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden";
+const cardCls = "bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden";
 const thCls = "px-4 py-2.5 text-[10.5px] font-semibold text-ink-400 uppercase tracking-wider bg-ink-50/60 text-left";
-const inputCls = "border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-white outline-none focus:border-accent";
+const inputCls = "border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-surface outline-none focus:border-accent";
 const primaryBtn = "inline-flex items-center gap-1.5 bg-accent text-white px-3.5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50";
 const linkBtn = "text-[13px] font-semibold text-accent hover:opacity-80 transition-opacity";
 
@@ -21,7 +21,7 @@ function TabButton({ active, onClick, children }) {
   return (
     <button onClick={onClick}
       className={`px-3 py-1.5 text-[13px] font-semibold rounded-lg transition-colors ${
-        active ? "bg-ink-900 text-white" : "bg-white text-ink-500 hover:text-ink-800 border border-ink-200"
+        active ? "bg-ink-900 text-white" : "bg-surface text-ink-500 hover:text-ink-800 border border-ink-200"
       }`}>{children}</button>
   );
 }
@@ -275,7 +275,7 @@ function SpendEntry() {
           <h2 className="text-[13px] font-semibold text-ink-800">Marketing spend — {monthNames[month - 1]} 2026</h2>
           <p className="text-[12px] text-ink-400 mt-0.5">Enter per-market spend for CPL/ROAS calculations.</p>
         </div>
-        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
+        <div className="flex flex-wrap justify-end gap-0.5 bg-surface rounded-lg border border-ink-200 p-1 shrink-0">
           {monthNames.map((m, i) => (
             <button key={m} onClick={() => setMonth(i + 1)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
@@ -526,7 +526,7 @@ function ActivityLog() {
             <option value="action">Actions</option>
           </select>
           <button onClick={loadLogs}
-            className="inline-flex items-center gap-1.5 bg-white text-ink-600 rounded-lg text-sm font-semibold border border-ink-200 px-3 py-1.5 hover:bg-ink-50 transition-colors">
+            className="inline-flex items-center gap-1.5 bg-surface text-ink-600 rounded-lg text-sm font-semibold border border-ink-200 px-3 py-1.5 hover:bg-ink-50 transition-colors">
             <RefreshCw size={14} /> Refresh
           </button>
         </div>

@@ -74,7 +74,7 @@ export default function MarketReports() {
           <div className="flex items-center gap-2 mt-3"><SourceTag source="call" /><span className="text-[12px] text-ink-400">{marketName} · 2026</span></div>
         </div>
         <select value={selectedMarket || ""} onChange={(e) => setSelectedMarket(e.target.value)}
-          className="text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-white outline-none focus:border-accent shrink-0">
+          className="text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-surface outline-none focus:border-accent shrink-0">
           {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </div>
@@ -100,7 +100,7 @@ export default function MarketReports() {
             </div>
           )}
 
-          <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+          <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
             <div className="px-5 py-3.5 border-b border-ink-100 flex items-center gap-2">
               <h2 className="text-[13px] font-semibold text-ink-800">{marketName} — monthly trend</h2><SourceTag source="call" />
             </div>

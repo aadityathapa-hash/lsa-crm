@@ -18,6 +18,7 @@
   --color-ink-100: #e9ecf3;   /* card borders */
   --color-ink-50:  #f4f6fa;   /* hairlines, row hover */
   --color-canvas:  #eef1f6;   /* page background */
+  --color-surface: #ffffff;   /* cards / panels (flips in dark) */
 
   /* brand accent — indigo (theme-able single token) */
   --color-accent:    #465fff;
@@ -45,6 +46,30 @@
 }
 
 :root { color-scheme: light; }
+
+/* ---------- Dark theme: remap the token ramp (html.dark) ---------- */
+html.dark {
+  color-scheme: dark;
+  --color-canvas:  #0f1420;
+  --color-surface: #181d2a;
+  --color-ink-900: #f3f5f9;
+  --color-ink-800: #e4e8ef;
+  --color-ink-700: #cfd5e0;
+  --color-ink-600: #aab2c2;
+  --color-ink-500: #8b94a6;
+  --color-ink-400: #6b7488;
+  --color-ink-300: #4a5366;
+  --color-ink-200: #2c3444;
+  --color-ink-100: #242b39;
+  --color-ink-50:  #1f2533;
+  /* accent stays indigo; soften the soft tint for dark surfaces */
+  --color-accent-50: #232a52;
+  /* status: lighten fg for contrast, darken the -50 tints */
+  --color-positive:   #34d399;  --color-positive-50:#0f2b20;
+  --color-caution:    #fbbf24;  --color-caution-50: #2f2611;
+  --color-critical:   #f87171;  --color-critical-50:#2e1614;
+  --color-steel:      #38bdf8;  --color-steel-50:   #0e2433;
+}
 
 html, body, #root { height: 100%; }
 body {

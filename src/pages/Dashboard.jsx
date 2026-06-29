@@ -93,7 +93,7 @@ const STATUS_TONE = { Connected: ["#027a48", "#ecfdf3"], Missed: ["#b42318", "#f
 function ChartTip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-ink-200 rounded-lg px-3 py-2 shadow-[0_10px_30px_-12px_rgba(16,24,40,.18)]">
+    <div className="bg-surface border border-ink-200 rounded-lg px-3 py-2 shadow-[0_10px_30px_-12px_rgba(16,24,40,.18)]">
       <p className="text-[11px] font-semibold text-ink-500 mb-1">{label}</p>
       {payload.map((p, i) => (
         <p key={i} className="text-[12px] tnum" style={{ color: p.color }}>
@@ -117,7 +117,7 @@ function OverviewSkeleton() {
 }
 
 const Card = ({ className = "", children }) => (
-  <div className={`bg-white border border-ink-100 rounded-[16px] shadow-[0_1px_2px_rgba(16,24,40,.04)] ${className}`}>{children}</div>
+  <div className={`bg-surface border border-ink-100 rounded-[16px] shadow-[0_1px_2px_rgba(16,24,40,.04)] ${className}`}>{children}</div>
 );
 
 export default function Dashboard() {
@@ -250,7 +250,7 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-1 bg-white border border-ink-100 rounded-[13px] p-[5px]">
+        <div className="flex flex-wrap gap-1 bg-surface border border-ink-100 rounded-[13px] p-[5px]">
           {MONTHS.map((m, i) => {
             const future = i + 1 > currentMonthNum;
             const active = month === i + 1;
@@ -324,7 +324,7 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={230}>
             <ComposedChart data={allMonths} margin={{ left: -14, right: 8, top: 8 }}>
               <defs><linearGradient id="lsaArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.accent} stopOpacity={0.22} /><stop offset="100%" stopColor={C.accent} stopOpacity={0} /></linearGradient></defs>
-              <CartesianGrid strokeDasharray="0" stroke="#f0f2f6" vertical={false} />
+              <CartesianGrid strokeDasharray="0" stroke="var(--color-ink-100)" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 13, fill: C.ink400 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: C.ink400 }} axisLine={false} tickLine={false} />
               <Tooltip content={<ChartTip />} />
@@ -459,7 +459,7 @@ export default function Dashboard() {
             <h3 className="text-[17px] font-bold text-ink-900">Recent Leads</h3>
             <p className="text-[13px] text-ink-400 mt-1">Latest calls this month</p>
           </div>
-          <button onClick={() => navigate(`/leads?month=${month}`)} className="flex items-center gap-1.5 bg-white border border-ink-200 rounded-[10px] px-3.5 h-[38px] text-[13.5px] font-semibold text-ink-600 hover:bg-ink-50 transition-colors">
+          <button onClick={() => navigate(`/leads?month=${month}`)} className="flex items-center gap-1.5 bg-surface border border-ink-200 rounded-[10px] px-3.5 h-[38px] text-[13.5px] font-semibold text-ink-600 hover:bg-ink-50 transition-colors">
             <SlidersHorizontal size={16} /> View all
           </button>
         </div>
@@ -501,8 +501,8 @@ export default function Dashboard() {
       {drawer && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div onClick={() => setDetail(null)} className="absolute inset-0 bg-ink-900/30" style={{ animation: "overlay-in .15s ease-out" }} />
-          <div className="relative h-full w-full max-w-[460px] bg-white shadow-[0_0_40px_-8px_rgba(16,24,40,.3)] overflow-y-auto" style={{ animation: "drawer-in .18s ease-out" }}>
-            <div className="flex items-start justify-between px-6 py-4 border-b border-ink-100 sticky top-0 bg-white z-10">
+          <div className="relative h-full w-full max-w-[460px] bg-surface shadow-[0_0_40px_-8px_rgba(16,24,40,.3)] overflow-y-auto" style={{ animation: "drawer-in .18s ease-out" }}>
+            <div className="flex items-start justify-between px-6 py-4 border-b border-ink-100 sticky top-0 bg-surface z-10">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 className="text-[17px] font-bold text-ink-900">{drawer.label}</h2>
@@ -569,7 +569,7 @@ function SfTile({ icon: Icon, chip, label, value, sub, badge, badgeGood = true, 
     <Cmp {...(clickable ? { type: "button", onClick } : {})}
       className={`w-full text-left border rounded-[13px] p-[18px] flex flex-col gap-3 transition-shadow ${emphasized ? "border-accent bg-accent-50" : "border-ink-50"} ${clickable ? "cursor-pointer hover:shadow-[0_6px_18px_-8px_rgba(16,24,40,.18)]" : ""}`}>
       <div className="flex items-center gap-2.5">
-        <span className={`w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0 ${emphasized ? "bg-white text-accent" : CHIP[chip]}`}><Icon size={17} strokeWidth={1.9} /></span>
+        <span className={`w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0 ${emphasized ? "bg-surface text-accent" : CHIP[chip]}`}><Icon size={17} strokeWidth={1.9} /></span>
         <span className={`text-[13px] font-medium ${emphasized ? "text-accent font-semibold" : "text-ink-500"}`}>{label}</span>
       </div>
       <span className="text-[25px] font-bold text-ink-900 tracking-[-0.5px] tnum">{value}</span>

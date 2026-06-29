@@ -134,7 +134,7 @@ export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp =
   return (
     <Cmp
       {...(clickable ? { type: "button", onClick } : {})}
-      className={`w-full text-left bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden transition-all ${clickable ? "cursor-pointer group hover:border-accent/40 hover:shadow-[0_2px_4px_rgba(20,24,31,.06),0_10px_24px_-8px_rgba(20,24,31,.14)]" : ""}`}>
+      className={`w-full text-left bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden transition-all ${clickable ? "cursor-pointer group hover:border-accent/40 hover:shadow-[0_2px_4px_rgba(20,24,31,.06),0_10px_24px_-8px_rgba(20,24,31,.14)]" : ""}`}>
       <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-ink-50">
         <span title={definition} className="text-[12px] font-medium text-ink-500 truncate">{label}</span>
         {Icon && (
@@ -169,7 +169,7 @@ export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp =
 export function Section({ title, source, right, note, children, className = "", accent, pad = true }) {
   return (
     <section
-      className={`relative bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] ${accent ? "overflow-hidden" : ""} ${className}`}>
+      className={`relative bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] ${accent ? "overflow-hidden" : ""} ${className}`}>
       {accent && <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent }} aria-hidden />}
       {(title || right) && (
         <header className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-ink-50">
@@ -236,7 +236,7 @@ export function HeroKpi({ label, value, icon: Icon, deltaValue, deltaGood = true
   const Cmp = clickable ? "button" : "div";
   return (
     <Cmp {...(clickable ? { type: "button", onClick } : {})}
-      className={`w-full text-left bg-white border border-ink-100 rounded-[16px] p-[22px] flex flex-col gap-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] ${clickable ? "cursor-pointer transition-shadow hover:shadow-[0_6px_18px_-8px_rgba(16,24,40,.18)]" : ""}`}>
+      className={`w-full text-left bg-surface border border-ink-100 rounded-[16px] p-[22px] flex flex-col gap-4 shadow-[0_1px_2px_rgba(16,24,40,.04)] ${clickable ? "cursor-pointer transition-shadow hover:shadow-[0_6px_18px_-8px_rgba(16,24,40,.18)]" : ""}`}>
       <div className="flex items-center justify-between">
         <span className="text-[12.5px] font-semibold tracking-[0.4px] text-ink-400 uppercase">{label}</span>
         <span className="w-10 h-10 rounded-[12px] bg-accent-50 text-accent flex items-center justify-center shrink-0"><Icon size={20} strokeWidth={1.8} /></span>
@@ -265,7 +265,7 @@ export function Gauge({ value, max = 100 }) {
   const py = (140 - 120 * Math.sin(ang)).toFixed(2);
   return (
     <svg viewBox="0 0 280 168" className="w-full max-w-[300px] h-auto">
-      <path d="M20 140 A120 120 0 0 1 260 140" fill="none" stroke="#eef0f5" strokeWidth="22" strokeLinecap="round" />
+      <path d="M20 140 A120 120 0 0 1 260 140" fill="none" stroke="var(--color-ink-100)" strokeWidth="22" strokeLinecap="round" />
       <path d={`M20 140 A120 120 0 0 1 ${px} ${py}`} fill="none" stroke="var(--color-accent)" strokeWidth="22" strokeLinecap="round" />
     </svg>
   );

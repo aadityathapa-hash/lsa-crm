@@ -72,11 +72,11 @@ export default function DailyReport() {
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
           <select value={market} onChange={(e) => setMarket(e.target.value)}
-            className="text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-white outline-none focus:border-accent">
+            className="text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-surface outline-none focus:border-accent">
             <option value="all">All markets</option>
             {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-          <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1">
+          <div className="flex flex-wrap justify-end gap-0.5 bg-surface rounded-lg border border-ink-200 p-1">
             {months.map((m, i) => (
               <button key={m} onClick={() => setMonth(i + 1)}
                 className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
@@ -98,9 +98,9 @@ export default function DailyReport() {
       {loading ? (
         <div className="space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
       ) : aggregated.length === 0 ? (
-        <div className="bg-white rounded-[12px] border border-ink-100"><EmptyState title={`No leads for ${months[month - 1]} 2026`} hint="Pick another month or market." /></div>
+        <div className="bg-surface rounded-[12px] border border-ink-100"><EmptyState title={`No leads for ${months[month - 1]} 2026`} hint="Pick another month or market." /></div>
       ) : (
-        <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+        <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
           <div className="px-5 py-3.5 border-b border-ink-100"><h2 className="text-[13px] font-semibold text-ink-800">{aggregated.length} days with leads</h2></div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
