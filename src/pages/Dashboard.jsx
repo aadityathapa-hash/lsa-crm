@@ -5,9 +5,13 @@ import {
   ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from "recharts";
-import { ArrowUpRight, ChevronRight, CircleAlert } from "lucide-react";
 import {
-  Metric, Section, SourceTag, RateChip, StatusChip, Caveat, Reconcile,
+  ArrowUpRight, ChevronRight, CircleAlert,
+  Phone, Receipt, PhoneCall, PhoneMissed, BellOff, Activity, Scale,
+  CalendarCheck, CircleCheck, Clock, CircleX, DollarSign,
+} from "lucide-react";
+import {
+  KpiCard, Section, SourceTag, RateChip, StatusChip, Caveat, Reconcile,
   Narrative, Skeleton, EmptyState,
 } from "../components/ui";
 
@@ -261,62 +265,62 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* headline KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Section><Metric size="headline" label="Lead Volume" source="call" value={data.total.toLocaleString()}
-          spark={allMonths.map(m => m.total)} sparkColor="#2b5c8a"
-          delta={delta(data.total, prev?.total)} deltaLabel={pm ? `vs ${pm}` : ""} /></Section>
-        <Section><Metric size="headline" label="Connection Rate" source="call" value={data.connRate.toFixed(1)} unit="%"
-          spark={allMonths.map(m => m.connectionRate)} sparkColor="#1f7a52"
-          sub={`target ${CONN_TARGET}%`} delta={rateDelta} deltaLabel={pm ? `pts vs ${pm}` : ""} definition="Connected ÷ (Connected + Missed), billable calls only." /></Section>
-        <Section><Metric size="headline" label="Bookings" source="sf" value={(sf?.booked || 0).toLocaleString()}
-          spark={allMonths.map(m => m.booked)} sparkColor="#2b5c8a"
-          delta={delta(sf?.booked, sfPrev?.booked)} deltaLabel={pm ? `vs ${pm}` : ""} definition="All Salesforce opps created this month (any lead source)." /></Section>
+      {/* Call System — one card per metric */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-[13px] font-semibold text-ink-800">Call System (LSA)</h2>
+          <SourceTag source="call" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <KpiCard label="Total calls" value={data.total.toLocaleString()} icon={Phone} tone="neutral"
+            delta={delta(data.total, prev?.total)} deltaLabel={pm ? `vs ${pm}` : ""} />
+          <KpiCard label="Billable" value={data.charged.toLocaleString()} icon={Receipt} tone="accent" definition="Charged calls, disputes backed out." />
+          <KpiCard label="Connected" value={data.connected.toLocaleString()} icon={PhoneCall} tone="accent" />
+          <KpiCard label="Missed" value={data.missed.toLocaleString()} icon={PhoneMissed} tone="critical"
+            delta={delta(data.missed, prev?.missed)} deltaLabel={pm ? `vs ${pm}` : ""} deltaGoodIsUp={false} />
+          <KpiCard label="Non-billable" value={data.nonCharged.toLocaleString()} icon={BellOff} tone="neutral" />
+          <KpiCard label="Conn. rate" value={data.connRate.toFixed(1)} unit="%" icon={Activity} tone="accent"
+            delta={rateDelta} deltaLabel={pm ? `pts vs ${pm}` : ""} definition="Connected ÷ (Connected + Missed), billable calls only." />
+          <KpiCard label="Disputes" value={data.disputes.toLocaleString()} icon={Scale} tone="neutral" />
+        </div>
+        <div className="mt-3 bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] px-4 py-3.5">
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full">
+            {segs.map((s) => <div key={s.label} style={{ width: `${(s.value / classTotal) * 100}%`, background: s.color }} />)}
+          </div>
+          <div className="mt-2.5 flex flex-wrap gap-4">
+            {segs.map((s) => (
+              <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-ink-500">
+                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />{s.label}
+                <span className="font-semibold text-ink-700 tnum">{s.value.toLocaleString()}</span>
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* two truth blocks + reconcile */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Section title="Call System (LSA)" source="call" accent="#1f7a52">
-          <div className="grid grid-cols-3 gap-y-4">
-            <Metric label="Billable" value={data.charged.toLocaleString()} definition="Charged calls, disputes backed out." />
-            <Metric label="Connected" value={data.connected.toLocaleString()} />
-            <Metric label="Missed" value={data.missed.toLocaleString()} delta={delta(data.missed, prev?.missed)} deltaLabel={pm ? `vs ${pm}` : ""} deltaGoodIsUp={false} />
-            <Metric label="Non-billable" value={data.nonCharged.toLocaleString()} />
-            <Metric label="Disputes" value={data.disputes.toLocaleString()} />
-            <Metric label="LSA bookings" value={data.booked.toLocaleString()} definition="Bookings that tie to an LSA lead (attributable to an agent)." />
-          </div>
-          {/* classification 100% stacked bar */}
-          <div className="mt-5">
-            <div className="flex h-2.5 w-full overflow-hidden rounded-full">
-              {segs.map((s) => <div key={s.label} style={{ width: `${(s.value / classTotal) * 100}%`, background: s.color }} />)}
-            </div>
-            <div className="mt-2 flex gap-4">
-              {segs.map((s) => (
-                <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-ink-500">
-                  <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />{s.label}
-                  <span className="font-semibold text-ink-700 tnum">{s.value.toLocaleString()}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        </Section>
-
-        <Section title="Salesforce — bookings & revenue" source="sf" accent="#2b5c8a"
-          note={!isCurrent ? undefined : "Salesforce figures cover the LSA lead source only and update hourly; this month may understate until it settles."}>
-          <div className="grid grid-cols-2 gap-y-4">
-            <Metric label="Completed" value={(sf?.completed || 0).toLocaleString()} />
-            <Metric label="Pending" value={(sf?.pending || 0).toLocaleString()} />
-            <Metric label="Canceled" value={(sf?.canceled || 0).toLocaleString()} />
-            <Metric label="Completed Revenue" value={`$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`} />
-          </div>
-          <div className="mt-5">
-            <Reconcile>
-              Salesforce shows <b className="text-ink-700">{(sf?.booked || 0).toLocaleString()}</b> bookings this month;{" "}
-              <b className="text-ink-700">{data.booked.toLocaleString()}</b> tie to an LSA lead
-              {sf && sf.booked > data.booked && <> — {(sf.booked - data.booked).toLocaleString()} booked through other channels</>}.
-            </Reconcile>
-          </div>
-        </Section>
+      {/* Salesforce — one card per metric */}
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-[13px] font-semibold text-ink-800">Salesforce — bookings &amp; revenue</h2>
+          <SourceTag source="sf" />
+        </div>
+        <p className="text-[12px] text-ink-400 mb-3">Opps created this month</p>
+        {isCurrent && <Caveat className="mb-3">Salesforce figures cover the LSA lead source only and update hourly; this month may understate until it settles.</Caveat>}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <KpiCard label="Bookings" value={(sf?.booked || 0).toLocaleString()} icon={CalendarCheck} tone="accent"
+            delta={delta(sf?.booked, sfPrev?.booked)} deltaLabel={pm ? `vs ${pm}` : ""} definition="All Salesforce opps created this month (any lead source)." />
+          <KpiCard label="Completed" value={(sf?.completed || 0).toLocaleString()} icon={CircleCheck} tone="accent" />
+          <KpiCard label="Pending" value={(sf?.pending || 0).toLocaleString()} icon={Clock} tone="neutral" />
+          <KpiCard label="Canceled" value={(sf?.canceled || 0).toLocaleString()} icon={CircleX} tone="critical" />
+          <KpiCard label="Completed revenue" value={`$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`} icon={DollarSign} tone="accent" />
+        </div>
+        <div className="mt-3">
+          <Reconcile>
+            Salesforce shows <b className="text-ink-700">{(sf?.booked || 0).toLocaleString()}</b> bookings this month;{" "}
+            <b className="text-ink-700">{data.booked.toLocaleString()}</b> tie to an LSA lead
+            {sf && sf.booked > data.booked && <> — {(sf.booked - data.booked).toLocaleString()} booked through other channels</>}.
+          </Reconcile>
+        </div>
       </div>
 
       {/* trends */}
