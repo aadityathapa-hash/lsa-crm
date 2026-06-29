@@ -133,7 +133,7 @@ export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp =
     <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-ink-50">
         <span title={definition} className="text-[12px] font-medium text-ink-500 truncate">{label}</span>
-        {Icon && <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center ${CHIP[tone]}`}><Icon size={14} strokeWidth={2} /></span>}
+        {Icon && <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-ink-50 text-ink-400"><Icon size={14} strokeWidth={2} /></span>}
       </div>
       <div className="px-4 pt-3 pb-4">
         <div className="text-[27px] font-bold tracking-[-0.02em] text-ink-900 tnum leading-none">
