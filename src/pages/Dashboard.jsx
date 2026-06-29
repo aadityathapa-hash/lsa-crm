@@ -6,10 +6,11 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 import {
-  Phone, Activity, Briefcase, DollarSign, Info, ChevronRight,
-  Calendar, CheckCircle2, Clock, XCircle, Search, SlidersHorizontal,
+  Phone, Activity, DollarSign, Info, ChevronRight,
+  Calendar, CheckCircle2, Clock, XCircle, SlidersHorizontal,
+  PhoneCall, PhoneMissed, Receipt, BellOff, Scale, X,
 } from "lucide-react";
-import { HeroKpi, Gauge, TargetBar, Avatar, Skeleton, EmptyState } from "../components/ui";
+import { HeroKpi, Gauge, TargetBar, Avatar, RateChip, Skeleton, EmptyState } from "../components/ui";
 
 const C = { accent: "#465fff", spark: "#bcc9ff", missed: "#f97066", neutral: "#d0d5dd", ink100: "#e9ecf3", ink400: "#98a2b3" };
 const CONN_TARGET = 95;
@@ -131,6 +132,7 @@ export default function Dashboard() {
   const [month, setMonth] = useState(new Date().getMonth() === 0 ? 12 : new Date().getMonth() + 1);
   const [year] = useState(2026);
   const [updated, setUpdated] = useState(null);
+  const [detail, setDetail] = useState(null);
   const navigate = useNavigate();
   const currentMonthNum = new Date().getMonth() + 1;
   const isCurrent = month === currentMonthNum;
@@ -194,6 +196,44 @@ export default function Dashboard() {
   const ltied = data.booked;                       // bookings tied to an LSA lead
   const otherChannels = sf ? Math.max(0, sf.booked - ltied) : 0;
 
+  // ----- metric detail drawer -----
+  const realMarkets = (data.marketData || []).filter(m => m.market_name !== "Unattributed" && m.market_name !== "Out of Area");
+  function buildDrawer(dt) {
+    if (dt.kind === "cs") {
+      const M = {
+        total:     { label: "Total calls", def: "Every LSA call logged this month.", get: m => m.total, leads: "" },
+        rate:      { label: "Connect rate", def: "Connected ÷ (Connected + Missed), billable calls only.", rate: true },
+        connected: { label: "Connected", def: "Charged calls that connected to an agent.", get: m => m.connected, leads: "Connected" },
+        missed:    { label: "Missed", def: "Charged calls that rang out or were missed.", get: m => m.missed, leads: "Missed" },
+        billable:  { label: "Billable", def: "Charged calls, with approved disputes backed out.", get: m => m.charged, leads: "Billable" },
+        nonbill:   { label: "Non-billable", def: "Calls Google did not charge for.", get: m => Math.max(0, m.total - m.connected - m.missed), leads: "Non-billable" },
+        disputes:  { label: "Disputes", def: "Charges disputed and approved (credited back).", get: m => m.disputes },
+      }[dt.key];
+      const value = dt.key === "rate" ? `${data.connRate.toFixed(1)}%`
+        : dt.key === "billable" ? data.charged.toLocaleString()
+        : dt.key === "nonbill" ? data.nonCharged.toLocaleString()
+        : (data[dt.key] ?? 0).toLocaleString();
+      const rows = M.rate
+        ? realMarkets.filter(m => m.connected + m.missed > 0).sort((a, b) => a.connRate - b.connRate).map(m => ({ name: m.market_name, rate: m.connRate }))
+        : realMarkets.map(m => ({ name: m.market_name, v: M.get(m) })).filter(r => r.v > 0).sort((a, b) => b.v - a.v);
+      const leadsHref = M.leads !== undefined ? `/leads?month=${month}${M.leads ? `&classification=${encodeURIComponent(M.leads)}` : ""}` : null;
+      return { label: M.label, value, def: M.def, source: "call", rate: !!M.rate, rows, leadsHref };
+    }
+    const M = {
+      bookings:  { label: "Bookings", val: (sf?.booked || 0).toLocaleString(), def: "All Salesforce opps created this month (any lead source)." },
+      completed: { label: "Completed", val: (sf?.completed || 0).toLocaleString(), def: "Paid or invoiced opportunities." },
+      pending:   { label: "Pending", val: (sf?.pending || 0).toLocaleString(), def: "Booked or estimate stage, awaiting close." },
+      canceled:  { label: "Canceled", val: (sf?.canceled || 0).toLocaleString(), def: "Opportunities that were canceled." },
+      revenue:   { label: "Completed revenue", val: `$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`, def: "Sum of completed opportunity amounts." },
+    }[dt.key];
+    const funnel = [
+      { name: "Bookings", v: sf?.booked || 0 }, { name: "Completed", v: sf?.completed || 0 },
+      { name: "Pending", v: sf?.pending || 0 }, { name: "Canceled", v: sf?.canceled || 0 },
+    ];
+    return { label: M.label, value: M.val, def: M.def, source: "sf", sfFunnel: funnel };
+  }
+  const drawer = detail ? buildDrawer(detail) : null;
+
   return (
     <div className="flex flex-col gap-[22px]">
 
@@ -230,17 +270,36 @@ export default function Dashboard() {
         </p>
       </Card>
 
-      {/* ---------- KPI row ---------- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-        <HeroKpi label="Total Calls" value={data.total.toLocaleString()} icon={Phone}
-          deltaValue={totalDelta != null ? Math.abs(totalDelta).toLocaleString() : null} deltaGood={totalDelta >= 0} deltaNote={pm ? `vs ${pm}` : ""}
-          onClick={() => navigate(`/leads?month=${month}`)} />
-        <HeroKpi label="Connect Rate" value={`${data.connRate.toFixed(1)}%`} icon={Activity}
-          deltaValue={rateDelta != null ? Math.abs(rateDelta) : null} deltaGood={rateDelta >= 0} deltaSuffix=" pts" deltaNote={pm ? `vs ${pm}` : ""} />
-        <HeroKpi label="Bookings" value={(sf?.booked || 0).toLocaleString()} icon={Briefcase}
-          deltaValue={bookingsDelta != null ? Math.abs(bookingsDelta).toLocaleString() : null} deltaGood={bookingsDelta >= 0} deltaNote={pm ? `vs ${pm}` : ""} />
-        <HeroKpi label="Completed Revenue" value={`$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`} icon={DollarSign}
-          sub={`${(sf?.completed || 0).toLocaleString()} of ${(sf?.booked || 0).toLocaleString()} bookings completed`} />
+      {/* ---------- Call System KPIs (all metrics, clickable) ---------- */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-[13px] font-semibold text-ink-700">Call System (LSA)</h2>
+          <span className="text-[11px] font-bold tracking-[0.5px] text-steel bg-steel-50 rounded-md px-2 py-[3px]">CALL SYSTEM</span>
+          <span className="text-[12px] text-ink-400">click any card for details</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <HeroKpi label="Total Calls" value={data.total.toLocaleString()} icon={Phone}
+            deltaValue={totalDelta != null ? Math.abs(totalDelta).toLocaleString() : null} deltaGood={totalDelta >= 0} deltaNote={pm ? `vs ${pm}` : ""}
+            onClick={() => setDetail({ kind: "cs", key: "total" })} />
+          <HeroKpi label="Connect Rate" value={`${data.connRate.toFixed(1)}%`} icon={Activity}
+            deltaValue={rateDelta != null ? Math.abs(rateDelta) : null} deltaGood={rateDelta >= 0} deltaSuffix=" pts" deltaNote={pm ? `vs ${pm}` : ""}
+            onClick={() => setDetail({ kind: "cs", key: "rate" })} />
+          <HeroKpi label="Connected" value={data.connected.toLocaleString()} icon={PhoneCall}
+            deltaValue={prev ? Math.abs(data.connected - prev.connected).toLocaleString() : null} deltaGood={!prev || data.connected >= prev.connected} deltaNote={pm ? `vs ${pm}` : ""}
+            onClick={() => setDetail({ kind: "cs", key: "connected" })} />
+          <HeroKpi label="Missed" value={data.missed.toLocaleString()} icon={PhoneMissed}
+            deltaValue={prev ? Math.abs(data.missed - prev.missed).toLocaleString() : null} deltaGood={!!prev && data.missed <= prev.missed} deltaNote={pm ? `vs ${pm}` : ""}
+            onClick={() => setDetail({ kind: "cs", key: "missed" })} />
+          <HeroKpi label="Billable" value={data.charged.toLocaleString()} icon={Receipt}
+            deltaValue={prev ? Math.abs(data.charged - prev.charged).toLocaleString() : null} deltaGood={!prev || data.charged >= prev.charged} deltaNote={pm ? `vs ${pm}` : ""}
+            onClick={() => setDetail({ kind: "cs", key: "billable" })} />
+          <HeroKpi label="Non-billable" value={data.nonCharged.toLocaleString()} icon={BellOff}
+            deltaValue={prev ? Math.abs(data.nonCharged - prev.nonCharged).toLocaleString() : null} deltaGood={!!prev && data.nonCharged <= prev.nonCharged} deltaNote={pm ? `vs ${pm}` : ""}
+            onClick={() => setDetail({ kind: "cs", key: "nonbill" })} />
+          <HeroKpi label="Disputes" value={data.disputes.toLocaleString()} icon={Scale}
+            deltaValue={prev ? Math.abs(data.disputes - prev.disputes).toLocaleString() : null} deltaGood={!!prev && data.disputes <= prev.disputes} deltaNote={pm ? `vs ${pm}` : ""}
+            onClick={() => setDetail({ kind: "cs", key: "disputes" })} />
+        </div>
       </div>
 
       {/* ---------- area chart + gauge ---------- */}
@@ -382,11 +441,11 @@ export default function Dashboard() {
           </div>
         )}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <SfTile icon={Calendar} chip="accent" label="Bookings" value={(sf?.booked || 0).toLocaleString()} badge={bookingsDelta != null ? `▲ ${Math.abs(bookingsDelta).toLocaleString()} vs ${pm}` : null} badgeGood={bookingsDelta >= 0} />
-          <SfTile icon={CheckCircle2} chip="positive" label="Completed" value={(sf?.completed || 0).toLocaleString()} sub={sf?.booked ? `${Math.round((sf.completed / sf.booked) * 100)}% of bookings` : "—"} />
-          <SfTile icon={Clock} chip="caution" label="Pending" value={(sf?.pending || 0).toLocaleString()} sub="awaiting close" />
-          <SfTile icon={XCircle} chip="critical" label="Canceled" value={(sf?.canceled || 0).toLocaleString()} sub={sf?.booked ? `${Math.round((sf.canceled / sf.booked) * 100)}% of bookings` : "—"} />
-          <SfTile icon={DollarSign} chip="accent" emphasized label="Revenue" value={`$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`} sub="completed bookings" />
+          <SfTile icon={Calendar} chip="accent" label="Bookings" value={(sf?.booked || 0).toLocaleString()} badge={bookingsDelta != null ? `▲ ${Math.abs(bookingsDelta).toLocaleString()} vs ${pm}` : null} badgeGood={bookingsDelta >= 0} onClick={() => setDetail({ kind: "sf", key: "bookings" })} />
+          <SfTile icon={CheckCircle2} chip="positive" label="Completed" value={(sf?.completed || 0).toLocaleString()} sub={sf?.booked ? `${Math.round((sf.completed / sf.booked) * 100)}% of bookings` : "—"} onClick={() => setDetail({ kind: "sf", key: "completed" })} />
+          <SfTile icon={Clock} chip="caution" label="Pending" value={(sf?.pending || 0).toLocaleString()} sub="awaiting close" onClick={() => setDetail({ kind: "sf", key: "pending" })} />
+          <SfTile icon={XCircle} chip="critical" label="Canceled" value={(sf?.canceled || 0).toLocaleString()} sub={sf?.booked ? `${Math.round((sf.canceled / sf.booked) * 100)}% of bookings` : "—"} onClick={() => setDetail({ kind: "sf", key: "canceled" })} />
+          <SfTile icon={DollarSign} chip="accent" emphasized label="Revenue" value={`$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`} sub="completed bookings" onClick={() => setDetail({ kind: "sf", key: "revenue" })} />
         </div>
         <div className="text-[13.5px] text-ink-600 bg-ink-50 rounded-[11px] px-4 py-3 leading-relaxed">
           Salesforce shows <b className="font-semibold text-ink-900">{(sf?.booked || 0).toLocaleString()}</b> bookings this month; <b className="font-semibold text-ink-900">{ltied.toLocaleString()}</b> tie to an LSA lead{otherChannels > 0 && <> — <b className="font-semibold text-ink-900">{otherChannels.toLocaleString()}</b> were booked through other channels</>}.
@@ -437,17 +496,78 @@ export default function Dashboard() {
           </div>
         )}
       </Card>
+
+      {/* ---------- metric detail drawer ---------- */}
+      {drawer && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div onClick={() => setDetail(null)} className="absolute inset-0 bg-ink-900/30" style={{ animation: "overlay-in .15s ease-out" }} />
+          <div className="relative h-full w-full max-w-[460px] bg-white shadow-[0_0_40px_-8px_rgba(16,24,40,.3)] overflow-y-auto" style={{ animation: "drawer-in .18s ease-out" }}>
+            <div className="flex items-start justify-between px-6 py-4 border-b border-ink-100 sticky top-0 bg-white z-10">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[17px] font-bold text-ink-900">{drawer.label}</h2>
+                  <span className={`text-[10px] font-bold tracking-[0.5px] rounded px-1.5 py-0.5 ${drawer.source === "sf" ? "bg-steel-50 text-steel" : "bg-accent-50 text-accent"}`}>{drawer.source === "sf" ? "SALESFORCE" : "CALL SYSTEM"}</span>
+                </div>
+                <div className="text-[30px] font-bold text-ink-900 tracking-[-1px] tnum mt-2">{drawer.value}</div>
+                <p className="text-[12.5px] text-ink-500 mt-1.5 max-w-[360px] leading-relaxed">{drawer.def}</p>
+              </div>
+              <button onClick={() => setDetail(null)} className="text-ink-400 hover:text-ink-700 p-1 -mr-1 -mt-1 shrink-0"><X size={20} /></button>
+            </div>
+            <div className="px-6 py-5">
+              {drawer.source === "call" ? (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[12px] font-semibold uppercase tracking-wider text-ink-400">By market</h3>
+                    {drawer.leadsHref && (
+                      <button onClick={() => { const h = drawer.leadsHref; setDetail(null); navigate(h); }}
+                        className="text-[12.5px] font-semibold text-accent inline-flex items-center gap-1 hover:text-accent-600">View leads <ChevronRight size={14} /></button>
+                    )}
+                  </div>
+                  {drawer.rows.length === 0 ? (
+                    <p className="text-[13px] text-ink-400">No market breakdown for this metric.</p>
+                  ) : (
+                    <div className="flex flex-col">
+                      {drawer.rows.map((r, i) => (
+                        <div key={r.name + i} className="flex items-center justify-between py-2 border-b border-ink-50 last:border-0">
+                          <span className="text-[13.5px] text-ink-700 truncate pr-3">{r.name}</span>
+                          {drawer.rate ? <RateChip value={r.rate / 100} target={0.95} /> : <span className="text-[13.5px] font-semibold text-ink-900 tnum">{r.v.toLocaleString()}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h3 className="text-[12px] font-semibold uppercase tracking-wider text-ink-400 mb-3">Bookings funnel</h3>
+                  <div className="flex flex-col">
+                    {drawer.sfFunnel.map((r) => (
+                      <div key={r.name} className="flex items-center justify-between py-2 border-b border-ink-50 last:border-0">
+                        <span className="text-[13.5px] text-ink-700">{r.name}</span>
+                        <span className="text-[13.5px] font-semibold text-ink-900 tnum">{r.v.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[12.5px] text-ink-500 bg-ink-50 rounded-lg px-3 py-2.5 mt-4 leading-relaxed">Salesforce records aren't listed individually in the CRM yet — figures cover the LSA lead source and update hourly.</div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function SfTile({ icon: Icon, chip, label, value, sub, badge, badgeGood = true, emphasized }) {
+function SfTile({ icon: Icon, chip, label, value, sub, badge, badgeGood = true, emphasized, onClick }) {
   const CHIP = {
     accent: "bg-accent-50 text-accent", positive: "bg-positive-50 text-positive",
     caution: "bg-caution-50 text-caution", critical: "bg-critical-50 text-critical",
   };
+  const clickable = typeof onClick === "function";
+  const Cmp = clickable ? "button" : "div";
   return (
-    <div className={`border rounded-[13px] p-[18px] flex flex-col gap-3 ${emphasized ? "border-accent bg-accent-50" : "border-ink-50"}`}>
+    <Cmp {...(clickable ? { type: "button", onClick } : {})}
+      className={`w-full text-left border rounded-[13px] p-[18px] flex flex-col gap-3 transition-shadow ${emphasized ? "border-accent bg-accent-50" : "border-ink-50"} ${clickable ? "cursor-pointer hover:shadow-[0_6px_18px_-8px_rgba(16,24,40,.18)]" : ""}`}>
       <div className="flex items-center gap-2.5">
         <span className={`w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0 ${emphasized ? "bg-white text-accent" : CHIP[chip]}`}><Icon size={17} strokeWidth={1.9} /></span>
         <span className={`text-[13px] font-medium ${emphasized ? "text-accent font-semibold" : "text-ink-500"}`}>{label}</span>
@@ -458,6 +578,6 @@ function SfTile({ icon: Icon, chip, label, value, sub, badge, badgeGood = true, 
       ) : sub ? (
         <span className={`text-[12px] ${emphasized ? "text-accent font-medium" : "text-ink-400"}`}>{sub}</span>
       ) : null}
-    </div>
+    </Cmp>
   );
 }
