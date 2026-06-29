@@ -1,6 +1,6 @@
 // "Control" design-system primitives — the shared kit the redesign is built from.
 // Monochrome + one accent + status semantics. No emoji, tabular numerals, hairlines.
-import { Info } from "lucide-react";
+import { Info, ArrowUpRight } from "lucide-react";
 
 /* ---------- Brand mark (Concept D — performance bars) ---------- */
 export function Logo({ size = 28 }) {
@@ -128,12 +128,18 @@ const CHIP = {
   steel: "bg-steel-50 text-steel",
   neutral: "bg-ink-50 text-ink-400",
 };
-export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp = true, sub, icon: Icon, tone = "neutral", definition }) {
+export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp = true, sub, icon: Icon, tone = "neutral", definition, onClick }) {
+  const clickable = typeof onClick === "function";
+  const Cmp = clickable ? "button" : "div";
   return (
-    <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+    <Cmp
+      {...(clickable ? { type: "button", onClick } : {})}
+      className={`w-full text-left bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden transition-all ${clickable ? "cursor-pointer group hover:border-accent/40 hover:shadow-[0_2px_4px_rgba(20,24,31,.06),0_10px_24px_-8px_rgba(20,24,31,.14)]" : ""}`}>
       <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-ink-50">
         <span title={definition} className="text-[12px] font-medium text-ink-500 truncate">{label}</span>
-        {Icon && <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-ink-50 text-ink-400"><Icon size={14} strokeWidth={2} /></span>}
+        {clickable
+          ? <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-ink-50 text-ink-300 group-hover:bg-accent-50 group-hover:text-accent transition-colors"><ArrowUpRight size={14} strokeWidth={2.25} /></span>
+          : Icon && <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-ink-50 text-ink-400"><Icon size={14} strokeWidth={2} /></span>}
       </div>
       <div className="px-4 pt-3 pb-4">
         <div className="text-[27px] font-bold tracking-[-0.02em] text-ink-900 tnum leading-none">
@@ -146,7 +152,7 @@ export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp =
           </div>
         )}
       </div>
-    </div>
+    </Cmp>
   );
 }
 

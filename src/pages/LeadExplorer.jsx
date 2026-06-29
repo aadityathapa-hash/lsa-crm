@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Search, X, Bot, User } from "lucide-react";
 import { StatusChip, SourceTag, Skeleton, EmptyState } from "../components/ui";
@@ -35,12 +36,16 @@ function Field({ label, value }) {
 }
 
 export default function LeadExplorer() {
+  const [searchParams] = useSearchParams();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [market, setMarket] = useState("all");
-  const [classification, setClassification] = useState("all");
-  const [search, setSearch] = useState("");
+  const [month, setMonth] = useState(() => {
+    const m = parseInt(searchParams.get("month"), 10);
+    return m >= 1 && m <= 12 ? m : new Date().getMonth() + 1;
+  });
+  const [market, setMarket] = useState(() => searchParams.get("market") || "all");
+  const [classification, setClassification] = useState(() => searchParams.get("classification") || "all");
+  const [search, setSearch] = useState(() => searchParams.get("q") || "");
   const [markets, setMarkets] = useState([]);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -80,7 +85,8 @@ export default function LeadExplorer() {
         .order("lead_creation_date", { ascending: false })
         .range(from, from + 999);
       if (market !== "all") query = query.eq("market_name", market);
-      if (classification !== "all") query = query.eq("source_classification", CLASS_TO_SC[classification]);
+      if (classification === "Billable") query = query.in("source_classification", ["Charged Call - Connected", "Charged Call - Missed"]);
+      else if (classification !== "all") query = query.eq("source_classification", CLASS_TO_SC[classification]);
       if (search) query = query.or(`client_name.ilike.%${search}%,phone.ilike.%${search}%`);
       const { data: batch } = await query;
       if (!batch || batch.length === 0) break;
@@ -145,6 +151,7 @@ export default function LeadExplorer() {
         </select>
         <select value={classification} onChange={(e) => setClassification(e.target.value)} className={selectCls}>
           <option value="all">All classifications</option>
+          <option value="Billable">Billable (connected + missed)</option>
           <option value="Connected">Connected</option>
           <option value="Missed">Missed</option>
           <option value="Non-billable">Non-billable</option>

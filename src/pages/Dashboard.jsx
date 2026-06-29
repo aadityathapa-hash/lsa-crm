@@ -273,12 +273,17 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <KpiCard label="Total calls" value={data.total.toLocaleString()} icon={Phone} tone="neutral"
-            delta={delta(data.total, prev?.total)} deltaLabel={pm ? `vs ${pm}` : ""} />
-          <KpiCard label="Billable" value={data.charged.toLocaleString()} icon={Receipt} tone="accent" definition="Charged calls, disputes backed out." />
-          <KpiCard label="Connected" value={data.connected.toLocaleString()} icon={PhoneCall} tone="accent" />
+            delta={delta(data.total, prev?.total)} deltaLabel={pm ? `vs ${pm}` : ""}
+            onClick={() => navigate(`/leads?month=${month}`)} />
+          <KpiCard label="Billable" value={data.charged.toLocaleString()} icon={Receipt} tone="accent" definition="Charged calls, disputes backed out."
+            onClick={() => navigate(`/leads?month=${month}&classification=Billable`)} />
+          <KpiCard label="Connected" value={data.connected.toLocaleString()} icon={PhoneCall} tone="accent"
+            onClick={() => navigate(`/leads?month=${month}&classification=Connected`)} />
           <KpiCard label="Missed" value={data.missed.toLocaleString()} icon={PhoneMissed} tone="critical"
-            delta={delta(data.missed, prev?.missed)} deltaLabel={pm ? `vs ${pm}` : ""} deltaGoodIsUp={false} />
-          <KpiCard label="Non-billable" value={data.nonCharged.toLocaleString()} icon={BellOff} tone="neutral" />
+            delta={delta(data.missed, prev?.missed)} deltaLabel={pm ? `vs ${pm}` : ""} deltaGoodIsUp={false}
+            onClick={() => navigate(`/leads?month=${month}&classification=Missed`)} />
+          <KpiCard label="Non-billable" value={data.nonCharged.toLocaleString()} icon={BellOff} tone="neutral"
+            onClick={() => navigate(`/leads?month=${month}&classification=Non-billable`)} />
           <KpiCard label="Conn. rate" value={data.connRate.toFixed(1)} unit="%" icon={Activity} tone="accent"
             delta={rateDelta} deltaLabel={pm ? `pts vs ${pm}` : ""} definition="Connected ÷ (Connected + Missed), billable calls only." />
           <KpiCard label="Disputes" value={data.disputes.toLocaleString()} icon={Scale} tone="neutral" />
