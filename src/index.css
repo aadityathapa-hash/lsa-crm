@@ -54,6 +54,9 @@ body {
 /* numbers always tabular for clean alignment */
 .tnum, table td, table th { font-variant-numeric: tabular-nums; }
 
+@keyframes drawer-in { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+
 /* visible, consistent focus for keyboard-first power users */
 :where(a, button, input, select, [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent);
