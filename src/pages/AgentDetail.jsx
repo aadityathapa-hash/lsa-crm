@@ -68,7 +68,7 @@ export default function AgentDetail() {
           </div>
           <div className="flex items-center gap-2 mt-3"><SourceTag source="lsa" /><span className="text-[12px] text-ink-400">{months[month - 1]} 2026</span></div>
         </div>
-        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
+        <div className="flex flex-wrap justify-end gap-0.5 bg-surface rounded-lg border border-ink-200 p-1 shrink-0">
           {months.map((m, i) => (
             <button key={m} onClick={() => setMonth(i + 1)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
@@ -91,12 +91,12 @@ export default function AgentDetail() {
       <div className="flex gap-1">
         {[{ key: "calls", label: "Call log" }, { key: "trend", label: "Monthly trend" }, { key: "breakdown", label: "Breakdown" }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-3 py-1.5 text-[13px] font-semibold rounded-lg transition-colors ${tab === t.key ? "bg-ink-900 text-white" : "bg-white text-ink-500 hover:text-ink-800 border border-ink-200"}`}>{t.label}</button>
+            className={`px-3 py-1.5 text-[13px] font-semibold rounded-lg transition-colors ${tab === t.key ? "bg-ink-900 text-white" : "bg-surface text-ink-500 hover:text-ink-800 border border-ink-200"}`}>{t.label}</button>
         ))}
       </div>
 
       {tab === "calls" && (
-        <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+        <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
           <div className="px-5 py-3.5 border-b border-ink-100"><h2 className="text-[13px] font-semibold text-ink-800">{months[month - 1]} 2026 · {calls.length} calls</h2></div>
           {loading ? (
             <div className="p-4 space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-9" />)}</div>
@@ -133,7 +133,7 @@ export default function AgentDetail() {
       )}
 
       {tab === "trend" && (
-        <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+        <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
           <div className="px-5 py-3.5 border-b border-ink-100"><h2 className="text-[13px] font-semibold text-ink-800">Monthly trend · 2026</h2></div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -165,7 +165,7 @@ export default function AgentDetail() {
 
       {tab === "breakdown" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+          <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
             <div className="px-5 py-3.5 border-b border-ink-100"><h2 className="text-[13px] font-semibold text-ink-800">Result distribution · {months[month - 1]}</h2></div>
             <div className="p-5 space-y-2">
               {Object.entries(resultDist).sort((a, b) => b[1] - a[1]).map(([result, count]) => {
@@ -182,7 +182,7 @@ export default function AgentDetail() {
               })}
             </div>
           </div>
-          <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+          <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
             <div className="px-5 py-3.5 border-b border-ink-100"><h2 className="text-[13px] font-semibold text-ink-800">Market distribution · {months[month - 1]}</h2></div>
             <div className="p-5 space-y-2">
               {Object.entries(marketDist).sort((a, b) => b[1] - a[1]).map(([market, count]) => {

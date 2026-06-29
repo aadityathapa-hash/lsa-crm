@@ -56,7 +56,7 @@ export default function AgentPerformance() {
             <SourceTag source="lsa" /><span className="text-[12px] text-ink-400">{data.length} agents · {months[month - 1]} 2026</span>
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
+        <div className="flex flex-wrap justify-end gap-0.5 bg-surface rounded-lg border border-ink-200 p-1 shrink-0">
           {months.map((m, i) => (
             <button key={m} onClick={() => setMonth(i + 1)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
@@ -67,7 +67,7 @@ export default function AgentPerformance() {
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
       ) : data.length === 0 ? (
-        <div className="bg-white rounded-[12px] border border-ink-100"><EmptyState title={`No agent data for ${months[month - 1]} 2026`} /></div>
+        <div className="bg-surface rounded-[12px] border border-ink-100"><EmptyState title={`No agent data for ${months[month - 1]} 2026`} /></div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -81,7 +81,7 @@ export default function AgentPerformance() {
 
           <Caveat>Booking and revenue are LSA-attributed (bookings tied to an LSA lead). Rates are shaded only when below the team median, not against a fixed target — call mix differs by agent.</Caveat>
 
-          <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+          <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
             <div className="px-5 py-3.5 border-b border-ink-100 flex items-center gap-2">
               <h2 className="text-[13px] font-semibold text-ink-800">Agent breakdown</h2>
               <SourceTag source="lsa" />

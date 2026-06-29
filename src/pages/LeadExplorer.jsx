@@ -116,7 +116,7 @@ export default function LeadExplorer() {
   const missed = leads.filter((l) => shortClass(l.source_classification) === "Missed").length;
   const nonbill = leads.filter((l) => shortClass(l.source_classification) === "Non-billable").length;
 
-  const selectCls = "text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-white outline-none focus:border-accent";
+  const selectCls = "text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-surface outline-none focus:border-accent";
 
   return (
     <div className="space-y-5">
@@ -130,7 +130,7 @@ export default function LeadExplorer() {
             <span className="text-[12px] text-ink-400">{leads.length.toLocaleString()} leads · {months[month - 1]} 2026</span>
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
+        <div className="flex flex-wrap justify-end gap-0.5 bg-surface rounded-lg border border-ink-200 p-1 shrink-0">
           {months.map((m, i) => (
             <button key={m} onClick={() => setMonth(i + 1)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
@@ -143,7 +143,7 @@ export default function LeadExplorer() {
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
           <input type="text" placeholder="Search name or phone" value={search} onChange={(e) => setSearch(e.target.value)}
-            className="text-[13px] border border-ink-200 rounded-lg pl-9 pr-3 h-9 text-ink-700 bg-white w-64 outline-none focus:border-accent" />
+            className="text-[13px] border border-ink-200 rounded-lg pl-9 pr-3 h-9 text-ink-700 bg-surface w-64 outline-none focus:border-accent" />
         </div>
         <select value={market} onChange={(e) => setMarket(e.target.value)} className={selectCls}>
           <option value="all">All markets</option>
@@ -167,12 +167,12 @@ export default function LeadExplorer() {
       {loading ? (
         <div className="space-y-2">{[...Array(10)].map((_, i) => <Skeleton key={i} className="h-11" />)}</div>
       ) : leads.length === 0 ? (
-        <div className="bg-white rounded-[12px] border border-ink-100">
+        <div className="bg-surface rounded-[12px] border border-ink-100">
           <EmptyState title="No leads match these filters" hint="Try a different month, market, or classification."
             action={<button onClick={() => { setMarket("all"); setClassification("all"); setSearch(""); }} className="text-[13px] font-medium text-accent hover:text-accent-600">Clear filters</button>} />
         </div>
       ) : (
-        <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+        <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -226,8 +226,8 @@ export default function LeadExplorer() {
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div onClick={() => setSelected(null)} className="absolute inset-0 bg-ink-900/30" style={{ animation: "overlay-in .15s ease-out" }} />
-          <div className="relative h-full w-full max-w-[480px] bg-white shadow-[0_0_40px_-8px_rgba(20,24,31,.3)] overflow-y-auto" style={{ animation: "drawer-in .18s ease-out" }}>
-            <div className="flex items-start justify-between px-6 py-4 border-b border-ink-100 sticky top-0 bg-white z-10">
+          <div className="relative h-full w-full max-w-[480px] bg-surface shadow-[0_0_40px_-8px_rgba(20,24,31,.3)] overflow-y-auto" style={{ animation: "drawer-in .18s ease-out" }}>
+            <div className="flex items-start justify-between px-6 py-4 border-b border-ink-100 sticky top-0 bg-surface z-10">
               <div className="min-w-0">
                 <h2 className="text-[17px] font-bold text-ink-900 truncate">{(selected.client_name || "").trim() || <span className="italic text-ink-500">Unknown caller</span>}</h2>
                 <p className="text-[12px] text-ink-400 font-mono mt-0.5">{fmtPhone(selected.phone)}</p>
@@ -244,7 +244,7 @@ export default function LeadExplorer() {
                 <p className="text-[10.5px] font-semibold text-ink-400 uppercase tracking-wider mb-1.5">Job status {selected._status && <span className="text-ink-400 normal-case font-normal">· manual override</span>}</p>
                 {selected.op_id ? (
                   <select value={selected._status || ""} onChange={(e) => saveStatus(selected.op_id, e.target.value)}
-                    className="text-[13px] border border-ink-200 rounded-lg px-3 h-10 w-full bg-white outline-none focus:border-accent">
+                    className="text-[13px] border border-ink-200 rounded-lg px-3 h-10 w-full bg-surface outline-none focus:border-accent">
                     <option value="">Not set — source result: {selected.result || "—"}</option>
                     {JOB_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>

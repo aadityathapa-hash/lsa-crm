@@ -207,19 +207,19 @@ export default function CsvUpload() {
       </div>
 
       {/* Upload area */}
-      <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
+      <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
         <div className="flex items-center gap-4 mb-4">
           <div>
             <label className="block text-[12px] text-ink-400 mb-1">Month</label>
             <select value={month} onChange={e => setMonth(parseInt(e.target.value))}
-              className="border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-white outline-none focus:border-accent">
+              className="border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-surface outline-none focus:border-accent">
               {months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-[12px] text-ink-400 mb-1">Year</label>
             <input type="number" value={year} onChange={e => setYear(parseInt(e.target.value))}
-              className="border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-white w-24 outline-none focus:border-accent" />
+              className="border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-surface w-24 outline-none focus:border-accent" />
           </div>
         </div>
 
@@ -239,7 +239,7 @@ export default function CsvUpload() {
 
       {/* Preview */}
       {preview && (
-        <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
+        <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
           <h2 className="text-[13px] font-semibold text-ink-800 mb-4">Preview</h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">

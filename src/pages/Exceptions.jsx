@@ -141,7 +141,7 @@ export default function Exceptions() {
           <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink-900">Attention</h1>
           <p className="text-[13px] text-ink-500 mt-1">Ranked queue of what needs action this month.</p>
         </div>
-        <div className="flex flex-wrap justify-end gap-0.5 bg-white rounded-lg border border-ink-200 p-1 shrink-0">
+        <div className="flex flex-wrap justify-end gap-0.5 bg-surface rounded-lg border border-ink-200 p-1 shrink-0">
           {MONTHS.slice(1).map((m, i) => (
             <button key={m} onClick={() => setMonth(i + 1)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${month === i + 1 ? "bg-accent text-white" : "text-ink-400 hover:text-ink-800 hover:bg-ink-50"}`}>{m}</button>
@@ -160,7 +160,7 @@ export default function Exceptions() {
               { k: "Missed calls", v: summary.missed },
               { k: "Open items", v: summary.issues },
             ].map((s) => (
-              <div key={s.k} className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-4">
+              <div key={s.k} className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-4">
                 <div className="text-[12px] font-medium text-ink-500">{s.k}</div>
                 <div className="text-[26px] font-bold tracking-[-0.02em] tnum mt-2 leading-none">{s.v}</div>
               </div>
@@ -168,7 +168,7 @@ export default function Exceptions() {
           </div>
 
           {groups.length === 0 ? (
-            <div className="bg-white rounded-[12px] border border-ink-100 py-14 text-center">
+            <div className="bg-surface rounded-[12px] border border-ink-100 py-14 text-center">
               <ShieldCheck size={28} className="mx-auto text-accent" />
               <p className="text-sm font-medium text-ink-700 mt-3">Nothing needs attention</p>
               <p className="text-[13px] text-ink-400 mt-1">All markets at target, no missed-call spikes, no data gaps for {MONTHS[month]}.</p>
@@ -181,7 +181,7 @@ export default function Exceptions() {
                   <h2 className="text-[12px] font-semibold uppercase tracking-wider text-ink-500">{SEV[g.sev].label}</h2>
                   <span className="text-[11px] text-ink-400">{g.rows.length}</span>
                 </div>
-                <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
+                <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
                   {g.rows.map((it, i) => {
                     const Icon = it.icon;
                     return (
