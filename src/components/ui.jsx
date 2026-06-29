@@ -128,7 +128,7 @@ const CHIP = {
   steel: "bg-steel-50 text-steel",
   neutral: "bg-ink-50 text-ink-400",
 };
-export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp = true, icon: Icon, tone = "neutral", definition }) {
+export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp = true, sub, icon: Icon, tone = "neutral", definition }) {
   return (
     <div className="bg-white rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-ink-50">
@@ -139,7 +139,12 @@ export function KpiCard({ label, value, unit, delta, deltaLabel, deltaGoodIsUp =
         <div className="text-[27px] font-bold tracking-[-0.02em] text-ink-900 tnum leading-none">
           {value}{unit && <span className="text-ink-300 font-semibold text-[0.5em] ml-0.5">{unit}</span>}
         </div>
-        {delta != null && <div className="mt-2.5"><Delta value={delta} label={deltaLabel} goodIsUp={deltaGoodIsUp} /></div>}
+        {(delta != null || sub) && (
+          <div className="mt-2.5 flex items-center gap-2">
+            {delta != null && <Delta value={delta} label={deltaLabel} goodIsUp={deltaGoodIsUp} />}
+            {sub && <span className="text-[11px] text-ink-400">{sub}</span>}
+          </div>
+        )}
       </div>
     </div>
   );

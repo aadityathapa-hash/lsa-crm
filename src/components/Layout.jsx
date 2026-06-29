@@ -13,7 +13,7 @@ import { Logo } from "./ui";
 const groups = [
   { name: "Monitor", items: [
     { path: "/",       label: "Overview",  icon: LayoutGrid },
-    { path: "/daily",  label: "Today",     icon: CalendarClock },
+    { path: "/daily",  label: "Daily",     icon: CalendarClock },
   ]},
   { name: "Investigate", items: [
     { path: "/leads",   label: "Leads",   icon: ListFilter },
@@ -30,7 +30,7 @@ const groups = [
 
 const PAGE_NAMES = {
   "/": "Overview", "/leads": "Leads", "/log-call": "Add Call", "/agents": "Agents",
-  "/markets": "Markets", "/daily": "Today", "/insights": "Attention", "/import": "Import", "/admin": "Admin",
+  "/markets": "Markets", "/daily": "Daily", "/insights": "Attention", "/import": "Import", "/admin": "Admin",
 };
 
 export default function Layout({ children }) {
