@@ -16,6 +16,11 @@ export function handledLabel({ is_bot, agentName, source_classification, notes }
   if (n.includes("avoca->human") || n.includes("avoca → human") || n.includes("avoca transfer")) {
     return { text: missed ? "Avoca → missed" : "Avoca → transfer", kind: "avoca" };
   }
+  // Avoca booked the opp in Salesforce but the call was transferred to an
+  // (unnamed) human, so it isn't credited to the bot — still Avoca-originated.
+  if (n.includes("sf created by: avoca")) {
+    return { text: "Avoca → transfer", kind: "avoca" };
+  }
   if (n.includes("queue")) {
     return { text: missed ? "Queue — missed" : "Queue", kind: "queue" };
   }
