@@ -50,6 +50,7 @@ export default function LeadExplorer() {
   const [market, setMarket] = useState(() => searchParams.get("market") || "all");
   const [classification, setClassification] = useState(() => searchParams.get("classification") || "all");
   const [search, setSearch] = useState(() => searchParams.get("q") || "");
+  const [agent, setAgent] = useState(() => searchParams.get("agent") || "all");
   const [markets, setMarkets] = useState([]);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -76,7 +77,7 @@ export default function LeadExplorer() {
     }
   }
 
-  useEffect(() => { fetchLeads(); setPage(0); }, [month, market, classification, search]);
+  useEffect(() => { fetchLeads(); setPage(0); }, [month, market, classification, search, agent]);
 
   // Auto-open a specific lead when arriving from a deep link (?lead=<id>).
   const openedLeadRef = useRef(null);
@@ -100,6 +101,7 @@ export default function LeadExplorer() {
       if (market !== "all") query = query.eq("market_name", market);
       if (classification === "Billable") query = query.in("source_classification", ["Charged Call - Connected", "Charged Call - Missed"]);
       else if (classification !== "all") query = query.eq("source_classification", CLASS_TO_SC[classification]);
+      if (agent !== "all") query = query.eq("agent_id", agent);
       if (search) query = query.or(`client_name.ilike.%${search}%,phone.ilike.%${search}%`);
       const { data: batch } = await query;
       if (!batch || batch.length === 0) break;
@@ -129,6 +131,7 @@ export default function LeadExplorer() {
   const missed = leads.filter((l) => shortClass(l.source_classification) === "Missed").length;
   const nonbill = leads.filter((l) => shortClass(l.source_classification) === "Non-billable").length;
 
+  const agentOptions = Object.entries(agentMap).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   const selectCls = "text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-surface outline-none focus:border-accent";
 
   return (
@@ -168,6 +171,10 @@ export default function LeadExplorer() {
           <option value="Connected">Connected</option>
           <option value="Missed">Missed</option>
           <option value="Non-billable">Non-billable</option>
+        </select>
+        <select value={agent} onChange={(e) => setAgent(e.target.value)} className={selectCls} title="Handled by">
+          <option value="all">All handlers</option>
+          {agentOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
         <div className="ml-auto flex items-center gap-2 text-[12px] text-ink-500">
           <StatusChip tone="positive">{connected.toLocaleString()} connected</StatusChip>
