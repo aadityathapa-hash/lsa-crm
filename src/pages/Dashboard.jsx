@@ -87,6 +87,16 @@ const fmtPhone = (p) => {
   return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : (p || "—");
 };
 const fmtDur = (s) => (s ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s` : "—");
+const fmtHour = (h) => (h == null ? "" : `${((h % 12) || 12)} ${h < 12 ? "AM" : "PM"}`);
+const fmtDateTime = (date, hour, createdAt) => {
+  let d = null;
+  if (date) d = new Date(date + "T00:00:00");
+  else if (createdAt) d = new Date(createdAt);
+  if (!d || isNaN(d)) return "—";
+  const day = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const time = hour != null ? fmtHour(hour) : (date ? "" : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }));
+  return time ? `${day} · ${time}` : day;
+};
 const shortClass = (sc) => sc?.includes("Connected") ? "Connected" : sc?.includes("Missed") ? "Missed" : "Non-billable";
 const STATUS_TONE = { Connected: ["#027a48", "#ecfdf3"], Missed: ["#b42318", "#fef3f2"], "Non-billable": ["#475467", "#f4f6fa"] };
 
@@ -158,7 +168,7 @@ export default function Dashboard() {
       month > 1 ? fetchSfBookings(month - 1, year) : Promise.resolve(null),
     ]);
     const { data: rl } = await supabase.from("agent_calls")
-      .select("id, client_name, phone, market_name, agent_id, is_bot, source_classification, duration_seconds, lead_creation_date, created_at")
+      .select("id, client_name, phone, market_name, agent_id, is_bot, source_classification, duration_seconds, lead_creation_date, hour_of_day, created_at")
       .eq("month", month).eq("year", year).eq("is_deleted", false)
       .order("lead_creation_date", { ascending: false }).limit(6);
     setRecent(rl || []);
@@ -463,9 +473,9 @@ export default function Dashboard() {
             <SlidersHorizontal size={16} /> View all
           </button>
         </div>
-        <div className="grid grid-cols-[1.4fr_1.4fr_1fr_1fr_1fr] gap-3 px-1.5 pb-3 border-b border-ink-50">
-          {["Lead", "Market", "Agent", "Duration", "Status"].map((h, i) => (
-            <span key={h} className={`text-[12px] font-semibold tracking-[0.4px] text-ink-400 uppercase ${i === 4 ? "text-right" : ""}`}>{h}</span>
+        <div className="grid grid-cols-[1.5fr_1.1fr_1fr_1.1fr_0.8fr_0.9fr] gap-3 px-1.5 pb-3 border-b border-ink-50">
+          {["Lead", "Market", "Agent", "Date / time", "Duration", "Status"].map((h, i) => (
+            <span key={h} className={`text-[12px] font-semibold tracking-[0.4px] text-ink-400 uppercase ${i === 5 ? "text-right" : ""}`}>{h}</span>
           ))}
         </div>
         {recent.length === 0 ? (
@@ -477,8 +487,8 @@ export default function Dashboard() {
               const [fg, bg] = STATUS_TONE[cls] || STATUS_TONE["Non-billable"];
               const name = (r.client_name || "").trim() || "Unknown caller";
               return (
-                <button key={r.id} onClick={() => navigate(`/leads?month=${month}`)}
-                  className={`grid grid-cols-[1.4fr_1.4fr_1fr_1fr_1fr] gap-3 items-center px-1.5 py-3 text-left hover:bg-ink-50/60 transition-colors ${idx < recent.length - 1 ? "border-b border-ink-50" : ""}`}>
+                <button key={r.id} onClick={() => navigate(`/leads?month=${month}&lead=${r.id}`)} title="Open lead to adjust status or follow up"
+                  className={`grid grid-cols-[1.5fr_1.1fr_1fr_1.1fr_0.8fr_0.9fr] gap-3 items-center px-1.5 py-3 text-left hover:bg-ink-50/60 transition-colors ${idx < recent.length - 1 ? "border-b border-ink-50" : ""}`}>
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar name={name} i={idx} />
                     <div className="leading-tight min-w-0">
@@ -488,6 +498,7 @@ export default function Dashboard() {
                   </div>
                   <span className="text-[14px] text-ink-600 truncate">{r.market_name || "—"}</span>
                   <span className="text-[14px] text-ink-600 truncate">{r.is_bot ? "Avoca bot" : (agentMap[r.agent_id] || "—")}</span>
+                  <span className="text-[13px] text-ink-600 tnum">{fmtDateTime(r.lead_creation_date, r.hour_of_day, r.created_at)}</span>
                   <span className="text-[14px] text-ink-600 tnum">{fmtDur(r.duration_seconds)}</span>
                   <span className="justify-self-end text-[12.5px] font-semibold rounded-full px-3 py-1" style={{ color: fg, background: bg }}>{cls}</span>
                 </button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Search, X, Bot, User } from "lucide-react";
@@ -73,6 +73,15 @@ export default function LeadExplorer() {
   }
 
   useEffect(() => { fetchLeads(); setPage(0); }, [month, market, classification, search]);
+
+  // Auto-open a specific lead when arriving from a deep link (?lead=<id>).
+  const openedLeadRef = useRef(null);
+  useEffect(() => {
+    const leadId = searchParams.get("lead");
+    if (!leadId || leads.length === 0 || openedLeadRef.current === leadId) return;
+    const found = leads.find((l) => String(l.id) === String(leadId));
+    if (found) { openedLeadRef.current = leadId; openLead(found); }
+  }, [leads, searchParams]);
 
   async function fetchLeads() {
     setLoading(true);
