@@ -20,6 +20,8 @@ export default function AgentDetail() {
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [tab, setTab] = useState("calls");
+  const [page, setPage] = useState(0);
+  const pageSize = 50;
 
   useEffect(() => { loadAgent(); loadMonthlyStats(); }, [agentId]);
   useEffect(() => { loadCalls(); }, [agentId, month]);
@@ -34,10 +36,20 @@ export default function AgentDetail() {
   }
   async function loadCalls() {
     setLoading(true);
-    const { data } = await supabase.from("agent_calls").select("*, markets(name)")
-      .eq("agent_id", agentId).eq("month", month).eq("year", 2026).eq("is_deleted", false)
-      .order("created_at", { ascending: false }).limit(200);
-    setCalls(data || []);
+    setPage(0);
+    // Fetch every call for the month in 1000-row batches (no silent cap), then
+    // paginate the display below. Prevents agents with >200 calls being truncated.
+    let rows = [], from = 0;
+    while (true) {
+      const { data: batch } = await supabase.from("agent_calls").select("*, markets(name)")
+        .eq("agent_id", agentId).eq("month", month).eq("year", 2026).eq("is_deleted", false)
+        .order("created_at", { ascending: false }).range(from, from + 999);
+      if (!batch || batch.length === 0) break;
+      rows = rows.concat(batch);
+      if (batch.length < 1000) break;
+      from += 1000;
+    }
+    setCalls(rows);
     setLoading(false);
   }
 
@@ -51,6 +63,8 @@ export default function AgentDetail() {
 
   const resultDist = calls.reduce((acc, c) => { acc[c.result] = (acc[c.result] || 0) + 1; return acc; }, {});
   const marketDist = calls.reduce((acc, c) => { const name = c.markets?.name || c.location || "Unknown"; acc[name] = (acc[name] || 0) + 1; return acc; }, {});
+  const pageCalls = calls.slice(page * pageSize, (page + 1) * pageSize);
+  const totalPages = Math.ceil(calls.length / pageSize);
 
   return (
     <div className="space-y-5">
@@ -103,6 +117,7 @@ export default function AgentDetail() {
           ) : calls.length === 0 ? (
             <EmptyState title={`No calls for ${months[month - 1]} 2026`} hint="Pick another month." />
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -113,7 +128,7 @@ export default function AgentDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {calls.map((c) => (
+                  {pageCalls.map((c) => (
                     <tr key={c.id} className="border-t border-ink-50 hover:bg-ink-50/60 transition-colors">
                       <td className="px-4 py-2.5 text-ink-600 whitespace-nowrap tnum">{c.lead_creation_date || "—"}</td>
                       <td className="px-4 py-2.5 text-ink-800 font-medium">{c.client_name || "—"}</td>
@@ -128,6 +143,16 @@ export default function AgentDetail() {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-ink-100">
+                <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                  className="text-[13px] font-medium text-ink-500 hover:text-ink-800 disabled:opacity-30">← Previous</button>
+                <span className="text-[12px] text-ink-400">Page {page + 1} of {totalPages}</span>
+                <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
+                  className="text-[13px] font-medium text-ink-500 hover:text-ink-800 disabled:opacity-30">Next →</button>
+              </div>
+            )}
+            </>
           )}
         </div>
       )}
