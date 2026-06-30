@@ -11,6 +11,7 @@ import {
   PhoneCall, PhoneMissed, Receipt, BellOff, Scale, X,
 } from "lucide-react";
 import { HeroKpi, Gauge, TargetBar, Avatar, RateChip, Skeleton, EmptyState } from "../components/ui";
+import { handledLabel } from "../lib/leadHandler";
 
 const C = { accent: "#465fff", spark: "#bcc9ff", missed: "#f97066", neutral: "#d0d5dd", ink100: "#e9ecf3", ink400: "#98a2b3" };
 const CONN_TARGET = 95;
@@ -168,7 +169,7 @@ export default function Dashboard() {
       month > 1 ? fetchSfBookings(month - 1, year) : Promise.resolve(null),
     ]);
     const { data: rl } = await supabase.from("agent_calls")
-      .select("id, client_name, phone, market_name, agent_id, is_bot, source_classification, duration_seconds, lead_creation_date, hour_of_day, created_at")
+      .select("id, client_name, phone, market_name, agent_id, is_bot, source_classification, duration_seconds, lead_creation_date, hour_of_day, created_at, notes")
       .eq("month", month).eq("year", year).eq("is_deleted", false)
       .order("lead_creation_date", { ascending: false }).limit(6);
     setRecent(rl || []);
@@ -497,7 +498,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <span className="text-[14px] text-ink-600 truncate">{r.market_name || "—"}</span>
-                  <span className="text-[14px] text-ink-600 truncate">{r.is_bot ? "Avoca bot" : (agentMap[r.agent_id] || "—")}</span>
+                  <span className="text-[14px] text-ink-600 truncate">{handledLabel({ is_bot: r.is_bot, agentName: agentMap[r.agent_id], source_classification: r.source_classification, notes: r.notes }).text}</span>
                   <span className="text-[13px] text-ink-600 tnum">{fmtDateTime(r.lead_creation_date, r.hour_of_day, r.created_at)}</span>
                   <span className="text-[14px] text-ink-600 tnum">{fmtDur(r.duration_seconds)}</span>
                   <span className="justify-self-end text-[12.5px] font-semibold rounded-full px-3 py-1" style={{ color: fg, background: bg }}>{cls}</span>

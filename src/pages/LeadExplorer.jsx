@@ -1,8 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { Search, X, Bot, User } from "lucide-react";
+import { Search, X, Bot, User, Users } from "lucide-react";
 import { StatusChip, SourceTag, Skeleton, EmptyState } from "../components/ui";
+import { handledLabel } from "../lib/leadHandler";
+
+const HANDLER_ICON = { bot: Bot, avoca: Bot, agent: User, queue: Users, unattr: User };
+const HANDLER_CLS = { bot: "text-steel", avoca: "text-steel", agent: "text-ink-500", queue: "text-ink-500", unattr: "text-ink-400" };
 
 const shortClass = (sc) => {
   if (!sc) return null;
@@ -206,9 +210,11 @@ export default function LeadExplorer() {
                       <td className="px-4 py-2.5 text-ink-500 font-mono text-[12px] whitespace-nowrap">{fmtPhone(lead.phone)}</td>
                       <td className="px-4 py-2.5">{cls ? <StatusChip tone={CLASS_TONE[cls]}>{cls}</StatusChip> : <span className="text-ink-300">—</span>}</td>
                       <td className="px-4 py-2.5">
-                        {lead.is_bot
-                          ? <span className="inline-flex items-center gap-1 text-[12px] text-steel"><Bot size={13} />Bot</span>
-                          : <span className="inline-flex items-center gap-1 text-[12px] text-ink-500"><User size={13} />{agentMap[lead.agent_id] || "Human"}</span>}
+                        {(() => {
+                          const h = handledLabel({ is_bot: lead.is_bot, agentName: agentMap[lead.agent_id], source_classification: lead.source_classification, notes: lead.notes });
+                          const Icon = HANDLER_ICON[h.kind] || User;
+                          return <span className={`inline-flex items-center gap-1 text-[12px] ${HANDLER_CLS[h.kind] || "text-ink-500"}`}><Icon size={13} />{h.text}</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-2.5 text-ink-600 tnum text-[13px]">{lead.duration_seconds ? `${lead.duration_seconds}s` : <span className="text-ink-300">—</span>}</td>
                       <td className="px-4 py-2.5">{lead._status ? <StatusChip tone={STATUS_TONE[lead._status] || "neutral"}>{lead._status}</StatusChip> : <span className="text-ink-400 text-[12px]">{lead.result || "—"}</span>}</td>
@@ -265,7 +271,7 @@ export default function LeadExplorer() {
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                 <Field label="Market" value={selected.market_name} />
                 <Field label="Date" value={selected.lead_creation_date ? new Date(selected.lead_creation_date + "T00:00:00").toLocaleDateString() : null} />
-                <Field label="Handled by" value={selected.is_bot ? "Avoca (bot)" : agentMap[selected.agent_id]} />
+                <Field label="Handled by" value={handledLabel({ is_bot: selected.is_bot, agentName: agentMap[selected.agent_id], source_classification: selected.source_classification, notes: selected.notes }).text} />
                 <Field label="Result" value={selected.result} />
                 <Field label="Duration" value={selected.duration_seconds ? selected.duration_seconds + "s" : null} />
                 <Field label="Revenue" value={selected.revenue != null ? "$" + Number(selected.revenue).toLocaleString() : null} />
