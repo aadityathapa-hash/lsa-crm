@@ -14,6 +14,7 @@ export default function AgentCallForm() {
   const [agents, setAgents] = useState([]);
   const [markets, setMarkets] = useState([]);
   const [myAgent, setMyAgent] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState("");
   const [matchedLead, setMatchedLead] = useState(null);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -58,6 +59,7 @@ export default function AgentCallForm() {
     if (profile?.id && agentData) {
       const linked = agentData.find((a) => a.profile_id === profile.id);
       if (linked) setMyAgent(linked);
+      setSelectedAgent(linked?.id || "");   // admins (unlinked) must pick explicitly
     }
 
     // Load recent calls
@@ -87,13 +89,16 @@ export default function AgentCallForm() {
     setSearching(true);
     setMatchedLead(null);
 
-    const currentMonth = new Date().getMonth() + 1;
+    // Match against agent_calls (the live pipeline table), NOT the legacy `leads`
+    // table — `leads` stopped being populated when the pipeline moved to
+    // agent_calls, so July+ lookups against it always came back empty.
     const { data, error } = await supabase
-      .from("leads")
-      .select("*, markets(name)")
-      .filter("phone", "ilike", `%${digits}`)
+      .from("agent_calls")
+      .select("client_name, email, market_name, source_classification, lead_creation_date, phone")
+      .ilike("phone", `%${digits}`)
       .eq("year", 2026)
-      .order("lead_creation_timestamp", { ascending: false })
+      .eq("is_deleted", false)
+      .order("lead_creation_date", { ascending: false })
       .limit(1);
 
     if (data && data.length > 0) {
@@ -102,13 +107,11 @@ export default function AgentCallForm() {
       // Auto-populate fields from matched lead
       setForm((prev) => ({
         ...prev,
-        client_name: prev.client_name || lead.customer_name || "",
+        client_name: prev.client_name || lead.client_name || "",
         email: prev.email || lead.email || "",
-        location: lead.markets?.name || prev.location,
-        source_classification: lead.classification || "",
-        lead_creation_date: lead.lead_creation_timestamp
-          ? new Date(lead.lead_creation_timestamp).toISOString().split("T")[0]
-          : prev.lead_creation_date,
+        location: lead.market_name || prev.location,
+        source_classification: lead.source_classification || "",
+        lead_creation_date: lead.lead_creation_date || prev.lead_creation_date,
       }));
     }
     setSearching(false);
@@ -120,9 +123,9 @@ export default function AgentCallForm() {
     setError(null);
     setSuccess(false);
 
-    const agentId = myAgent?.id || agents[0]?.id;
+    const agentId = selectedAgent;
     if (!agentId) {
-      setError("No agent linked to your account. Contact admin.");
+      setError("Choose which agent to credit this call to.");
       setSubmitting(false);
       return;
     }
@@ -227,6 +230,16 @@ export default function AgentCallForm() {
         <div className="lg:col-span-2">
           <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Credit to (agent) — admins can pick anyone; agents default to themselves */}
+              <div className="md:col-span-2">
+                <label className="block text-[12px] font-medium text-ink-500 mb-1">Credit to (agent) *</label>
+                <select value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)}
+                  className="w-full border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-surface outline-none focus:border-accent">
+                  <option value="">Select agent…</option>
+                  {agents.map((a) => <option key={a.id} value={a.id}>{a.name}{myAgent?.id === a.id ? " (you)" : ""}</option>)}
+                </select>
+              </div>
+
               {/* Phone — with lead matching */}
               <div className="md:col-span-2">
                 <label className="block text-[12px] font-medium text-ink-500 mb-1">Phone number</label>
@@ -245,11 +258,11 @@ export default function AgentCallForm() {
                   <div className="mt-2 flex items-start gap-1.5 bg-accent-50 border border-accent/20 rounded-lg px-3 py-2 text-xs text-accent">
                     <CheckCircle2 size={13} className="mt-0.5 shrink-0" />
                     <span>
-                      Matched LSA lead: <span className="font-medium">{matchedLead.customer_name || "Unknown"}</span>
-                      {" "}in <span className="font-medium">{matchedLead.markets?.name}</span>
-                      {" "}— {matchedLead.classification}
-                      {matchedLead.lead_creation_timestamp && (
-                        <span> ({new Date(matchedLead.lead_creation_timestamp).toLocaleDateString()})</span>
+                      Matched LSA lead: <span className="font-medium">{matchedLead.client_name || "Unknown"}</span>
+                      {matchedLead.market_name && <> in <span className="font-medium">{matchedLead.market_name}</span></>}
+                      {matchedLead.source_classification && <> — {matchedLead.source_classification}</>}
+                      {matchedLead.lead_creation_date && (
+                        <span> ({new Date(matchedLead.lead_creation_date + "T00:00:00").toLocaleDateString()})</span>
                       )}
                     </span>
                   </div>
