@@ -51,6 +51,7 @@ export default function LeadExplorer() {
   const [classification, setClassification] = useState(() => searchParams.get("classification") || "all");
   const [search, setSearch] = useState(() => searchParams.get("q") || "");
   const [agent, setAgent] = useState(() => searchParams.get("agent") || "all");
+  const [status, setStatus] = useState(() => searchParams.get("status") || "all");
   const [markets, setMarkets] = useState([]);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -78,6 +79,7 @@ export default function LeadExplorer() {
   }
 
   useEffect(() => { fetchLeads(); setPage(0); }, [month, market, classification, search, agent]);
+  useEffect(() => { setPage(0); }, [status]);  // status filters client-side
 
   // Auto-open a specific lead when arriving from a deep link (?lead=<id>).
   const openedLeadRef = useRef(null);
@@ -125,11 +127,14 @@ export default function LeadExplorer() {
     setSelected((prev) => (prev ? { ...prev, _status: status || null } : prev));
   }
 
-  const paged = leads.slice(page * pageSize, (page + 1) * pageSize);
-  const totalPages = Math.ceil(leads.length / pageSize);
-  const connected = leads.filter((l) => shortClass(l.source_classification) === "Connected").length;
-  const missed = leads.filter((l) => shortClass(l.source_classification) === "Missed").length;
-  const nonbill = leads.filter((l) => shortClass(l.source_classification) === "Non-billable").length;
+  // Status = the displayed STATUS column (manual job status if set, else result). Filter client-side so it matches exactly.
+  const statusOptions = [...new Set(leads.map((l) => l._status || l.result).filter(Boolean))].sort();
+  const filtered = status === "all" ? leads : leads.filter((l) => (l._status || l.result) === status);
+  const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const connected = filtered.filter((l) => shortClass(l.source_classification) === "Connected").length;
+  const missed = filtered.filter((l) => shortClass(l.source_classification) === "Missed").length;
+  const nonbill = filtered.filter((l) => shortClass(l.source_classification) === "Non-billable").length;
 
   const agentOptions = Object.entries(agentMap).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   const selectCls = "text-[13px] border border-ink-200 rounded-lg px-3 h-9 text-ink-700 bg-surface outline-none focus:border-accent";
@@ -143,7 +148,7 @@ export default function LeadExplorer() {
           <p className="text-[13px] text-ink-500 mt-1">Search and investigate individual LSA leads.</p>
           <div className="flex items-center gap-2 mt-3">
             <SourceTag source="call" />
-            <span className="text-[12px] text-ink-400">{leads.length.toLocaleString()} leads · {months[month - 1]} 2026</span>
+            <span className="text-[12px] text-ink-400">{filtered.length.toLocaleString()} leads · {months[month - 1]} 2026</span>
           </div>
         </div>
         <div className="flex flex-wrap justify-end gap-0.5 bg-surface rounded-lg border border-ink-200 p-1 shrink-0">
@@ -175,6 +180,10 @@ export default function LeadExplorer() {
         <select value={agent} onChange={(e) => setAgent(e.target.value)} className={selectCls} title="Handled by">
           <option value="all">All handlers</option>
           {agentOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls} title="Status">
+          <option value="all">All statuses</option>
+          {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <div className="ml-auto flex items-center gap-2 text-[12px] text-ink-500">
           <StatusChip tone="positive">{connected.toLocaleString()} connected</StatusChip>
