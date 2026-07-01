@@ -14,6 +14,7 @@ export default function AgentCallForm() {
   const [agents, setAgents] = useState([]);
   const [markets, setMarkets] = useState([]);
   const [myAgent, setMyAgent] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState("");
   const [matchedLead, setMatchedLead] = useState(null);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -58,6 +59,7 @@ export default function AgentCallForm() {
     if (profile?.id && agentData) {
       const linked = agentData.find((a) => a.profile_id === profile.id);
       if (linked) setMyAgent(linked);
+      setSelectedAgent(linked?.id || "");   // admins (unlinked) must pick explicitly
     }
 
     // Load recent calls
@@ -121,9 +123,9 @@ export default function AgentCallForm() {
     setError(null);
     setSuccess(false);
 
-    const agentId = myAgent?.id || agents[0]?.id;
+    const agentId = selectedAgent;
     if (!agentId) {
-      setError("No agent linked to your account. Contact admin.");
+      setError("Choose which agent to credit this call to.");
       setSubmitting(false);
       return;
     }
@@ -228,6 +230,16 @@ export default function AgentCallForm() {
         <div className="lg:col-span-2">
           <div className="bg-surface rounded-[12px] border border-ink-100 shadow-[0_1px_2px_rgba(20,24,31,.05),0_4px_12px_-6px_rgba(20,24,31,.08)] p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Credit to (agent) — admins can pick anyone; agents default to themselves */}
+              <div className="md:col-span-2">
+                <label className="block text-[12px] font-medium text-ink-500 mb-1">Credit to (agent) *</label>
+                <select value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)}
+                  className="w-full border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-800 bg-surface outline-none focus:border-accent">
+                  <option value="">Select agent…</option>
+                  {agents.map((a) => <option key={a.id} value={a.id}>{a.name}{myAgent?.id === a.id ? " (you)" : ""}</option>)}
+                </select>
+              </div>
+
               {/* Phone — with lead matching */}
               <div className="md:col-span-2">
                 <label className="block text-[12px] font-medium text-ink-500 mb-1">Phone number</label>
