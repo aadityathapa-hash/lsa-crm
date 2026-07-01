@@ -22,7 +22,7 @@ async function fetchAgentCallStats(month, year) {
   let rows = [], from = 0;
   while (true) {
     const { data: batch } = await supabase
-      .from("agent_calls").select("source_classification, result, market_name, is_bot")
+      .from("agent_calls").select("source_classification, result, market_name, is_bot, source, revenue")
       .eq("month", month).eq("year", year).range(from, from + 999);
     if (!batch || batch.length === 0) break;
     rows = rows.concat(batch);
@@ -30,6 +30,12 @@ async function fetchAgentCallStats(month, year) {
     from += 1000;
   }
   if (!rows.length) return null;
+  // Holistic split: source='SF' rows are non-LSA bookings (no call behind them) —
+  // count their bookings/revenue but keep them OUT of every call metric.
+  const sfOther = rows.filter(r => r.source === "SF");
+  const otherBooked = sfOther.filter(r => r.result === "Booked" || r.result === "FU Booked").length;
+  const otherRevenue = sfOther.reduce((s, r) => s + (Number(r.revenue) || 0), 0);
+  rows = rows.filter(r => r.source !== "SF");
   const total = rows.length;
   const connected = rows.filter(r => r.source_classification === "Charged Call - Connected").length;
   const missed = rows.filter(r => r.source_classification === "Charged Call - Missed").length;
@@ -53,7 +59,7 @@ async function fetchAgentCallStats(month, year) {
     ...m, charged: m.connected + m.missed - m.disputes,
     connRate: (m.connected + m.missed) > 0 ? (m.connected / (m.connected + m.missed)) * 100 : 0,
   }));
-  return { total, connected, missed, nonCharged, charged, disputes, booked, bot, human: total - bot, connRate, marketData };
+  return { total, connected, missed, nonCharged, charged, disputes, booked, bot, human: total - bot, connRate, marketData, otherBooked, otherRevenue };
 }
 
 const SF_BUCKET = {
@@ -459,7 +465,7 @@ export default function Dashboard() {
           <SfTile icon={DollarSign} chip="accent" emphasized label="Revenue" value={`$${Math.round(sf?.completedRevenue || 0).toLocaleString()}`} sub="completed bookings" onClick={() => setDetail({ kind: "sf", key: "revenue" })} />
         </div>
         <div className="text-[13.5px] text-ink-600 bg-ink-50 rounded-[11px] px-4 py-3 leading-relaxed">
-          Salesforce shows <b className="font-semibold text-ink-900">{(sf?.booked || 0).toLocaleString()}</b> bookings this month; <b className="font-semibold text-ink-900">{ltied.toLocaleString()}</b> tie to an LSA lead{otherChannels > 0 && <> — <b className="font-semibold text-ink-900">{otherChannels.toLocaleString()}</b> were booked through other channels</>}.
+          Salesforce shows <b className="font-semibold text-ink-900">{(sf?.booked || 0).toLocaleString()}</b> bookings this month; <b className="font-semibold text-ink-900">{ltied.toLocaleString()}</b> tie to an LSA lead{otherChannels > 0 && <> — <b className="font-semibold text-ink-900">{otherChannels.toLocaleString()}</b> booked through other channels</>}.{data.otherBooked > 0 && <> Other-channel bookings now appear in <button onClick={() => navigate(`/leads?month=${month}&src=SF`)} className="font-semibold text-accent hover:underline">Leads → Source: Other</button> ({data.otherBooked.toLocaleString()} booked · ${Math.round(data.otherRevenue).toLocaleString()} completed).</>}
         </div>
       </Card>
 

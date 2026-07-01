@@ -52,6 +52,7 @@ export default function LeadExplorer() {
   const [search, setSearch] = useState(() => searchParams.get("q") || "");
   const [agent, setAgent] = useState(() => searchParams.get("agent") || "all");
   const [status, setStatus] = useState(() => searchParams.get("status") || "all");
+  const [src, setSrc] = useState(() => searchParams.get("src") || "all");
   const [markets, setMarkets] = useState([]);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -95,7 +96,7 @@ export default function LeadExplorer() {
   }
 
   useEffect(() => { fetchLeads(); setPage(0); }, [month, market, classification, search, agent]);
-  useEffect(() => { setPage(0); }, [status]);  // status filters client-side
+  useEffect(() => { setPage(0); }, [status, src]);  // status/source filter client-side
 
   // Auto-open a specific lead when arriving from a deep link (?lead=<id>).
   const openedLeadRef = useRef(null);
@@ -112,7 +113,7 @@ export default function LeadExplorer() {
     while (true) {
       let query = supabase
         .from("agent_calls")
-        .select("id, lead_creation_date, market_name, client_name, phone, source_classification, duration_seconds, job_type, agent_id, result, revenue, notes, is_bot, op_id, hour_of_day")
+        .select("id, lead_creation_date, market_name, client_name, phone, source_classification, duration_seconds, job_type, agent_id, result, revenue, notes, is_bot, op_id, hour_of_day, source")
         .eq("year", 2026).eq("month", month).eq("is_deleted", false)
         .order("lead_creation_date", { ascending: false })
         .range(from, from + 999);
@@ -143,9 +144,13 @@ export default function LeadExplorer() {
     setSelected((prev) => (prev ? { ...prev, _status: status || null } : prev));
   }
 
+  // Lead origin: SF = Salesforce-only booking (no LSA call), Manual = logged via Add Call,
+  // everything else (LSA / legacy Google/Other/NULL tags) = an LSA call.
+  const leadOrigin = (l) => (l.source === "SF" ? "Other" : l.source === "Manual" ? "Manual" : "LSA");
   // Status = the displayed STATUS column (manual job status if set, else result). Filter client-side so it matches exactly.
   const statusOptions = [...new Set(leads.map((l) => l._status || l.result).filter(Boolean))].sort();
-  const filtered = status === "all" ? leads : leads.filter((l) => (l._status || l.result) === status);
+  const bySrc = src === "all" ? leads : leads.filter((l) => leadOrigin(l) === (src === "SF" ? "Other" : src));
+  const filtered = status === "all" ? bySrc : bySrc.filter((l) => (l._status || l.result) === status);
   const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const totalPages = Math.ceil(filtered.length / pageSize);
   const connected = filtered.filter((l) => shortClass(l.source_classification) === "Connected").length;
@@ -201,6 +206,12 @@ export default function LeadExplorer() {
           <option value="all">All statuses</option>
           {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+        <select value={src} onChange={(e) => setSrc(e.target.value)} className={selectCls} title="Lead source">
+          <option value="all">All sources</option>
+          <option value="LSA">LSA</option>
+          <option value="SF">Other (non-LSA)</option>
+          <option value="Manual">Manual</option>
+        </select>
         <div className="ml-auto flex items-center gap-2 text-[12px] text-ink-500">
           <StatusChip tone="positive">{connected.toLocaleString()} connected</StatusChip>
           <StatusChip tone="critical">{missed} missed</StatusChip>
@@ -240,7 +251,7 @@ export default function LeadExplorer() {
                       <td className="px-4 py-2.5 text-ink-800 font-medium text-[13px]">{lead.market_name || <span className="text-ink-300">—</span>}</td>
                       <td className="px-4 py-2.5 text-[13px]">{named || <span className="text-ink-400 italic">Unknown caller</span>}</td>
                       <td className="px-4 py-2.5 text-ink-500 font-mono text-[12px] whitespace-nowrap">{fmtPhone(lead.phone)}</td>
-                      <td className="px-4 py-2.5">{cls ? <StatusChip tone={CLASS_TONE[cls]}>{cls}</StatusChip> : <span className="text-ink-300">—</span>}</td>
+                      <td className="px-4 py-2.5">{cls ? <StatusChip tone={CLASS_TONE[cls]}>{cls}</StatusChip> : lead.source === "SF" ? <StatusChip tone="info">Other</StatusChip> : <span className="text-ink-300">—</span>}</td>
                       <td className="px-4 py-2.5">
                         {(() => {
                           const h = handledLabel({ is_bot: lead.is_bot, agentName: agentMap[lead.agent_id], source_classification: lead.source_classification, notes: lead.notes });
