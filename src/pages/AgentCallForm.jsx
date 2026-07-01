@@ -87,13 +87,16 @@ export default function AgentCallForm() {
     setSearching(true);
     setMatchedLead(null);
 
-    const currentMonth = new Date().getMonth() + 1;
+    // Match against agent_calls (the live pipeline table), NOT the legacy `leads`
+    // table — `leads` stopped being populated when the pipeline moved to
+    // agent_calls, so July+ lookups against it always came back empty.
     const { data, error } = await supabase
-      .from("leads")
-      .select("*, markets(name)")
-      .filter("phone", "ilike", `%${digits}`)
+      .from("agent_calls")
+      .select("client_name, email, market_name, source_classification, lead_creation_date, phone")
+      .ilike("phone", `%${digits}`)
       .eq("year", 2026)
-      .order("lead_creation_timestamp", { ascending: false })
+      .eq("is_deleted", false)
+      .order("lead_creation_date", { ascending: false })
       .limit(1);
 
     if (data && data.length > 0) {
@@ -102,13 +105,11 @@ export default function AgentCallForm() {
       // Auto-populate fields from matched lead
       setForm((prev) => ({
         ...prev,
-        client_name: prev.client_name || lead.customer_name || "",
+        client_name: prev.client_name || lead.client_name || "",
         email: prev.email || lead.email || "",
-        location: lead.markets?.name || prev.location,
-        source_classification: lead.classification || "",
-        lead_creation_date: lead.lead_creation_timestamp
-          ? new Date(lead.lead_creation_timestamp).toISOString().split("T")[0]
-          : prev.lead_creation_date,
+        location: lead.market_name || prev.location,
+        source_classification: lead.source_classification || "",
+        lead_creation_date: lead.lead_creation_date || prev.lead_creation_date,
       }));
     }
     setSearching(false);
@@ -245,11 +246,11 @@ export default function AgentCallForm() {
                   <div className="mt-2 flex items-start gap-1.5 bg-accent-50 border border-accent/20 rounded-lg px-3 py-2 text-xs text-accent">
                     <CheckCircle2 size={13} className="mt-0.5 shrink-0" />
                     <span>
-                      Matched LSA lead: <span className="font-medium">{matchedLead.customer_name || "Unknown"}</span>
-                      {" "}in <span className="font-medium">{matchedLead.markets?.name}</span>
-                      {" "}— {matchedLead.classification}
-                      {matchedLead.lead_creation_timestamp && (
-                        <span> ({new Date(matchedLead.lead_creation_timestamp).toLocaleDateString()})</span>
+                      Matched LSA lead: <span className="font-medium">{matchedLead.client_name || "Unknown"}</span>
+                      {matchedLead.market_name && <> in <span className="font-medium">{matchedLead.market_name}</span></>}
+                      {matchedLead.source_classification && <> — {matchedLead.source_classification}</>}
+                      {matchedLead.lead_creation_date && (
+                        <span> ({new Date(matchedLead.lead_creation_date + "T00:00:00").toLocaleDateString()})</span>
                       )}
                     </span>
                   </div>
