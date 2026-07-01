@@ -61,7 +61,23 @@ export default function LeadExplorer() {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   useEffect(() => {
-    supabase.from("markets").select("id, name").order("name").then(({ data }) => setMarkets(data || []));
+    // Build the market filter from the market names ACTUALLY in agent_calls, not the
+    // markets table. The markets table uses short names (KC, GR, Indy) while the
+    // pipeline stores Google's full names (Kansas City, Grand Rapids), so filtering
+    // by the table's names returned 0 rows. Sourcing from the data guarantees every
+    // option matches real leads, for every market.
+    (async () => {
+      let rows = [], from = 0;
+      while (true) {
+        const { data } = await supabase.from("agent_calls").select("market_name").eq("year", 2026).range(from, from + 999);
+        if (!data || data.length === 0) break;
+        rows = rows.concat(data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      const names = [...new Set(rows.map((r) => r.market_name).filter(Boolean))].sort();
+      setMarkets(names.map((n) => ({ id: n, name: n })));
+    })();
     supabase.from("agents").select("id, name").then(({ data }) =>
       setAgentMap(Object.fromEntries((data || []).map((a) => [a.id, a.name]))));
   }, []);
