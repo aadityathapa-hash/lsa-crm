@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import { Target, TrendingDown, PhoneMissed, UserX, CircleDollarSign, MapPinOff, ChevronRight, ShieldCheck, PhoneOff, Unlink } from "lucide-react";
+import { Target, TrendingDown, PhoneMissed, UserX, CircleDollarSign, MapPinOff, ChevronRight, ShieldCheck, PhoneOff, Unlink, X } from "lucide-react";
 import { Skeleton } from "../components/ui";
 
 // Not a real terminal disposition — a call sitting on one of these past its
@@ -52,6 +52,7 @@ export default function Exceptions() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [detailItem, setDetailItem] = useState(null);
   const year = 2026;
   const navigate = useNavigate();
 
@@ -67,7 +68,7 @@ export default function Exceptions() {
       pull(month, year, "agent_id, result, is_bot"),
       supabase.from("agents").select("id, name").then((r) => r.data || []),
       supabase.from("lead_costs").select("market_id, total_spend").eq("month", month).eq("year", year).then((r) => r.data || []),
-      supabase.from("sf_opportunities").select("phone, status, contact_name, opportunity_id")
+      supabase.from("sf_opportunities").select("phone, status, contact_name, opportunity_id, amount, create_datetime")
         .gte("create_datetime", `${year}-${String(month).padStart(2, "0")}-01`)
         .lt("create_datetime", month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`)
         .then((r) => r.data || []),
@@ -156,10 +157,13 @@ export default function Exceptions() {
     const BOOKED_SF = new Set(["paid", "invoiced", "job booked", "on-site estimate booked", "estimate presented", "canceled"]);
     const orphanSf = sfBooked.filter((r) => BOOKED_SF.has((r.status || "").toLowerCase())
       && !knownPhones.has(clean(r.phone)) && !knownOps.has(String(r.opportunity_id)));
+    // These have NO row anywhere in agent_calls, so there's nothing to navigate
+    // to — carry the raw records so the row can open a detail drawer in place.
     if (orphanSf.length > 0) list.push({
       sev: orphanSf.length >= 5 ? "crit" : "warn", icon: Unlink, title: "Salesforce bookings with no lead record",
       detail: `${orphanSf.length} booked opp${orphanSf.length > 1 ? "s" : ""} (e.g. ${orphanSf.slice(0, 2).map((r) => r.contact_name || "unknown").join(", ")}) have no matching row anywhere in the CRM`,
-      metric: `${orphanSf.length}`, owner: "Admin", onClick: () => navigate("/admin"),
+      metric: `${orphanSf.length}`, owner: "Admin",
+      people: orphanSf.map((r) => ({ name: r.contact_name || "Unknown", phone: r.phone, status: r.status, amount: r.amount, date: r.create_datetime, op: r.opportunity_id })),
     });
 
     const spendMarkets = new Set(costs.filter((c) => c.total_spend > 0).map((c) => c.market_id));
@@ -173,7 +177,7 @@ export default function Exceptions() {
     if (unattr) list.push({
       sev: "data", icon: MapPinOff, title: "Unattributed leads",
       detail: `${unattr.total} leads have no market from the source`, metric: `${unattr.total}`,
-      owner: "Admin", onClick: () => navigate("/admin"),
+      owner: "Admin", onClick: () => navigate(`/leads?month=${month}&market=__none__`),
     });
 
     const totalConnected = cur.filter((r) => r.source_classification === "Charged Call - Connected").length;
@@ -236,7 +240,7 @@ export default function Exceptions() {
                   {g.rows.map((it, i) => {
                     const Icon = it.icon;
                     return (
-                      <button key={i} onClick={it.onClick}
+                      <button key={i} onClick={it.people ? () => setDetailItem(it) : it.onClick}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-ink-50 first:border-t-0 hover:bg-ink-50/60 transition-colors">
                         <span className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${SEV[g.sev].chip}`}><Icon size={16} /></span>
                         <div className="min-w-0 flex-1">
@@ -256,6 +260,39 @@ export default function Exceptions() {
             ))
           )}
         </>
+      )}
+
+      {detailItem && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div onClick={() => setDetailItem(null)} className="absolute inset-0 bg-ink-900/30" style={{ animation: "overlay-in .15s ease-out" }} />
+          <div className="relative h-full w-full max-w-[480px] bg-surface shadow-[0_0_40px_-8px_rgba(20,24,31,.3)] overflow-y-auto" style={{ animation: "drawer-in .18s ease-out" }}>
+            <div className="flex items-start justify-between px-6 py-4 border-b border-ink-100 sticky top-0 bg-surface z-10">
+              <div className="min-w-0">
+                <h2 className="text-[17px] font-bold text-ink-900">{detailItem.title}</h2>
+                <p className="text-[12px] text-ink-400 mt-0.5">{detailItem.people.length} record{detailItem.people.length > 1 ? "s" : ""} — booked in Salesforce, no matching CRM lead yet</p>
+              </div>
+              <button onClick={() => setDetailItem(null)} className="text-ink-400 hover:text-ink-800 -mr-1 -mt-1 p-1"><X size={20} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              {detailItem.people.map((p, i) => (
+                <div key={i} className="rounded-lg border border-ink-100 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[14px] font-semibold text-ink-900">{p.name}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-caution bg-caution-50 rounded-full px-2 py-0.5">{p.status}</span>
+                  </div>
+                  <div className="mt-1.5 text-[12.5px] text-ink-500 space-y-0.5">
+                    <div>{p.phone || "No phone on file"}</div>
+                    <div>{p.date ? new Date(p.date).toLocaleDateString() : "—"}{p.amount ? ` · $${Number(p.amount).toLocaleString()}` : ""}</div>
+                    {p.op && <div className="text-ink-400">Opportunity {p.op}</div>}
+                  </div>
+                </div>
+              ))}
+              <p className="text-[12px] text-ink-400 leading-relaxed pt-2 border-t border-ink-100">
+                These bookings exist only in Salesforce — no Google LSA lead or Dialpad call matched them, so the daily pipeline hasn't created a CRM record yet. They'll disappear from this list automatically once the pipeline runs and picks them up as "Other" source leads.
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
