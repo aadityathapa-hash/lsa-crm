@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import { Target, TrendingDown, PhoneMissed, UserX, CircleDollarSign, MapPinOff, ChevronRight, ShieldCheck } from "lucide-react";
+import { Target, TrendingDown, PhoneMissed, UserX, CircleDollarSign, MapPinOff, ChevronRight, ShieldCheck, PhoneOff, Unlink } from "lucide-react";
 import { Skeleton } from "../components/ui";
+
+// Not a real terminal disposition — a call sitting on one of these past its
+// window means an agent never finished statusing it (Maddie's flow step:
+// "Agent statuses call and completes lead"). "Not Booked" is deliberately
+// excluded: Maddie's own flow lists it as a completed reason for not booking,
+// not an open one.
+const OPEN_RESULTS = new Set([null, "", "Pending", "Attempting Contact", "New"]);
+const STALE_DAYS = 5;
+const UNATTRIBUTED_NAME = "Unattributed";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const CONN_TARGET = 0.95;
@@ -52,12 +61,17 @@ export default function Exceptions() {
     setLoading(true);
     const prevMonth = month > 1 ? month - 1 : 12;
     const prevYear = month > 1 ? year : year - 1;
-    const [cur, prv, agentCalls, agents, costs] = await Promise.all([
+    const [cur, prv, agentCalls, agents, costs, sfBooked, curPhones] = await Promise.all([
       pull(month, year, "source_classification, result, market_id, market_name, hour_of_day"),
       pull(prevMonth, prevYear, "source_classification, result, market_name"),
       pull(month, year, "agent_id, result, is_bot"),
       supabase.from("agents").select("id, name").then((r) => r.data || []),
       supabase.from("lead_costs").select("market_id, total_spend").eq("month", month).eq("year", year).then((r) => r.data || []),
+      supabase.from("sf_opportunities").select("phone, status, contact_name, opportunity_id")
+        .gte("create_datetime", `${year}-${String(month).padStart(2, "0")}-01`)
+        .lt("create_datetime", month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`)
+        .then((r) => r.data || []),
+      pull(month, year, "phone, op_id, agent_id, result, is_bot, lead_creation_date, client_name"),
     ]);
     const agentMap = Object.fromEntries(agents.map((a) => [a.id, a.name]));
     const curM = marketsFrom(cur);
@@ -110,6 +124,43 @@ export default function Exceptions() {
         detail: `${a.booked} booked of ${a.calls} calls`, metric: `${(a.rate * 100).toFixed(1)}%`,
         owner: "Team lead", onClick: () => navigate("/agents"),
       }));
+
+    // Maddie's flow, alert 1 — "agent statuses call and completes lead": a real
+    // human-handled call sitting on a non-terminal result past STALE_DAYS means
+    // nobody finished working it. Avoca auto-completes, so bot calls are exempt.
+    const today = new Date();
+    const staleByAgent = {};
+    // Unassigned/unattributed calls have no agent to hold accountable — they're
+    // already surfaced by the "Unattributed leads" data-quality item below.
+    curPhones.filter((r) => !r.is_bot && r.agent_id && agentMap[r.agent_id] !== UNATTRIBUTED_NAME
+      && OPEN_RESULTS.has(r.result) && r.lead_creation_date)
+      .forEach((r) => {
+        const days = (today - new Date(r.lead_creation_date + "T00:00:00")) / 86400000;
+        if (days < STALE_DAYS) return;
+        staleByAgent[r.agent_id] = (staleByAgent[r.agent_id] || 0) + 1;
+      });
+    Object.entries(staleByAgent).filter(([, c]) => c >= 3)
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([id, c]) => list.push({
+        sev: c >= 10 ? "crit" : "warn", icon: PhoneOff,
+        title: agentMap[id] || "Unassigned", detail: `${c} calls left unstatused ${STALE_DAYS}+ days — never marked booked, not booked, or archived`,
+        metric: `${c} open`, owner: "Team lead", onClick: () => navigate(`/leads?month=${month}&agent=${id}&status=Pending`),
+      }));
+
+    // Maddie's flow, alert 2 — SF cross-reference: a booked Salesforce opp with
+    // NO matching agent_calls row at all (not even our own SF/Dialpad ingestion)
+    // is a genuine pipeline gap, not just an "other channel" booking.
+    const clean = (p) => String(p || "").replace(/\D/g, "").slice(-10);
+    const knownPhones = new Set(curPhones.map((r) => clean(r.phone)).filter(Boolean));
+    const knownOps = new Set(curPhones.map((r) => r.op_id).filter(Boolean));
+    const BOOKED_SF = new Set(["paid", "invoiced", "job booked", "on-site estimate booked", "estimate presented", "canceled"]);
+    const orphanSf = sfBooked.filter((r) => BOOKED_SF.has((r.status || "").toLowerCase())
+      && !knownPhones.has(clean(r.phone)) && !knownOps.has(String(r.opportunity_id)));
+    if (orphanSf.length > 0) list.push({
+      sev: orphanSf.length >= 5 ? "crit" : "warn", icon: Unlink, title: "Salesforce bookings with no lead record",
+      detail: `${orphanSf.length} booked opp${orphanSf.length > 1 ? "s" : ""} (e.g. ${orphanSf.slice(0, 2).map((r) => r.contact_name || "unknown").join(", ")}) have no matching row anywhere in the CRM`,
+      metric: `${orphanSf.length}`, owner: "Admin", onClick: () => navigate("/admin"),
+    });
 
     const spendMarkets = new Set(costs.filter((c) => c.total_spend > 0).map((c) => c.market_id));
     real.filter((m) => m.market_id && !spendMarkets.has(m.market_id)).forEach((m) => list.push({
