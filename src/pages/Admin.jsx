@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Plus, Save, Pencil, RefreshCw, Settings2 } from "lucide-react";
 import { StatusChip, EmptyState } from "../components/ui";
@@ -576,8 +577,14 @@ function ActivityLog() {
 // ============================================================
 // MAIN ADMIN PAGE
 // ============================================================
+const VALID_TABS = new Set(["users", "agents", "markets", "spend", "activity"]);
+
 export default function Admin() {
-  const [tab, setTab] = useState("users");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => {
+    const t = searchParams.get("tab");
+    return VALID_TABS.has(t) ? t : "users";
+  });
 
   return (
     <div className="space-y-5">

@@ -166,7 +166,7 @@ export default function Exceptions() {
     real.filter((m) => m.market_id && !spendMarkets.has(m.market_id)).forEach((m) => list.push({
       sev: "data", icon: CircleDollarSign, title: m.market_name,
       detail: "No marketing spend entered — CPL can't be calculated", metric: "no spend",
-      owner: "Admin", onClick: () => navigate("/admin"),
+      owner: "Admin", onClick: () => navigate("/admin?tab=spend"),
     }));
 
     const unattr = curM.find((m) => m.market_name === "Unattributed");
