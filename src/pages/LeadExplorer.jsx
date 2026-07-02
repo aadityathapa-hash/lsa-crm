@@ -117,7 +117,8 @@ export default function LeadExplorer() {
         .eq("year", 2026).eq("month", month).eq("is_deleted", false)
         .order("lead_creation_date", { ascending: false })
         .range(from, from + 999);
-      if (market !== "all") query = query.eq("market_name", market);
+      if (market === "__none__") query = query.is("market_name", null);
+      else if (market !== "all") query = query.eq("market_name", market);
       if (classification === "Billable") query = query.in("source_classification", ["Charged Call - Connected", "Charged Call - Missed"]);
       else if (classification !== "all") query = query.eq("source_classification", CLASS_TO_SC[classification]);
       if (agent !== "all") query = query.eq("agent_id", agent);
@@ -189,6 +190,7 @@ export default function LeadExplorer() {
         </div>
         <select value={market} onChange={(e) => setMarket(e.target.value)} className={selectCls}>
           <option value="all">All markets</option>
+          <option value="__none__">No market (unattributed)</option>
           {markets.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
         </select>
         <select value={classification} onChange={(e) => setClassification(e.target.value)} className={selectCls}>
