@@ -64,8 +64,8 @@ export default function AgentPerformance() {
   }
 
   const view = srcView === "all" ? rows
-    : srcView === "SF" ? rows.filter((r) => r.source === "SF")
-    : rows.filter((r) => r.source !== "SF" && r.source !== "Manual");
+    : srcView === "SF" ? rows.filter((r) => r.source === "SF" || r.source === "Dialpad")
+    : rows.filter((r) => r.source !== "SF" && r.source !== "Dialpad" && r.source !== "Manual");
 
   // per-agent aggregation
   const byAgent = {};
@@ -75,7 +75,7 @@ export default function AgentPerformance() {
     a.calls++;
     if (isSales(r)) a.sales++;
     if (isCharged(r)) a.charged++;
-    if (isBooked(r)) { a.booked++; r.source === "SF" ? a.bookedOther++ : a.bookedLsa++; }
+    if (isBooked(r)) { a.booked++; (r.source === "SF" || r.source === "Dialpad") ? a.bookedOther++ : a.bookedLsa++; }
     a.revenue += Number(r.revenue) || 0;
     r.is_bot ? a.bot++ : a.human++;
   });

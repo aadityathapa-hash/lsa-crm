@@ -146,7 +146,7 @@ export default function LeadExplorer() {
 
   // Lead origin: SF = Salesforce-only booking (no LSA call), Manual = logged via Add Call,
   // everything else (LSA / legacy Google/Other/NULL tags) = an LSA call.
-  const leadOrigin = (l) => (l.source === "SF" ? "Other" : l.source === "Manual" ? "Manual" : "LSA");
+  const leadOrigin = (l) => (l.source === "SF" || l.source === "Dialpad" ? "Other" : l.source === "Manual" ? "Manual" : "LSA");
   // Status = the displayed STATUS column (manual job status if set, else result). Filter client-side so it matches exactly.
   const statusOptions = [...new Set(leads.map((l) => l._status || l.result).filter(Boolean))].sort();
   const bySrc = src === "all" ? leads : leads.filter((l) => leadOrigin(l) === (src === "SF" ? "Other" : src));
@@ -251,7 +251,7 @@ export default function LeadExplorer() {
                       <td className="px-4 py-2.5 text-ink-800 font-medium text-[13px]">{lead.market_name || <span className="text-ink-300">—</span>}</td>
                       <td className="px-4 py-2.5 text-[13px]">{named || <span className="text-ink-400 italic">Unknown caller</span>}</td>
                       <td className="px-4 py-2.5 text-ink-500 font-mono text-[12px] whitespace-nowrap">{fmtPhone(lead.phone)}</td>
-                      <td className="px-4 py-2.5">{cls ? <StatusChip tone={CLASS_TONE[cls]}>{cls}</StatusChip> : lead.source === "SF" ? <StatusChip tone="info">Other</StatusChip> : <span className="text-ink-300">—</span>}</td>
+                      <td className="px-4 py-2.5">{cls ? <StatusChip tone={CLASS_TONE[cls]}>{cls}</StatusChip> : (lead.source === "SF" || lead.source === "Dialpad") ? <StatusChip tone="info">Other</StatusChip> : <span className="text-ink-300">—</span>}</td>
                       <td className="px-4 py-2.5">
                         {(() => {
                           const h = handledLabel({ is_bot: lead.is_bot, agentName: agentMap[lead.agent_id], source_classification: lead.source_classification, notes: lead.notes });

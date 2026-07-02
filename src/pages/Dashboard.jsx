@@ -35,7 +35,9 @@ async function fetchAgentCallStats(month, year) {
   const sfOther = rows.filter(r => r.source === "SF");
   const otherBooked = sfOther.filter(r => r.result === "Booked" || r.result === "FU Booked").length;
   const otherRevenue = sfOther.reduce((s, r) => s + (Number(r.revenue) || 0), 0);
-  rows = rows.filter(r => r.source !== "SF");
+  // Dialpad-only rows are real inbound calls but not Google-billed — keep the
+  // Call System (LSA) metrics pure by excluding them alongside SF rows.
+  rows = rows.filter(r => r.source !== "SF" && r.source !== "Dialpad");
   const total = rows.length;
   const connected = rows.filter(r => r.source_classification === "Charged Call - Connected").length;
   const missed = rows.filter(r => r.source_classification === "Charged Call - Missed").length;
