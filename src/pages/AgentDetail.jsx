@@ -21,7 +21,15 @@ export default function AgentDetail() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [tab, setTab] = useState("calls");
   const [page, setPage] = useState(0);
+  const [detail, setDetail] = useState(null); // call selected via Notes click
   const pageSize = 50;
+
+  useEffect(() => {
+    if (!detail) return;
+    const onKey = (e) => { if (e.key === "Escape") setDetail(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detail]);
 
   useEffect(() => { loadAgent(); loadMonthlyStats(); }, [agentId]);
   useEffect(() => { loadCalls(); }, [agentId, month]);
@@ -137,7 +145,27 @@ export default function AgentDetail() {
                       <td className="px-4 py-2.5"><StatusChip tone={resultTone(c.result)}>{c.result}</StatusChip></td>
                       <td className="px-4 py-2.5 text-right text-ink-600 tnum">{c.revenue ? "$" + parseFloat(c.revenue).toLocaleString() : "—"}</td>
                       <td className="px-4 py-2.5 text-ink-500 text-xs">{c.ttm_result || "—"}</td>
-                      <td className="px-4 py-2.5 text-ink-400 text-xs max-w-[150px] truncate">{c.notes || "—"}</td>
+                      <td className="px-4 py-2.5 text-xs max-w-[220px]">
+                        {c.notes ? (
+                          <button
+                            type="button"
+                            onClick={() => setDetail(c)}
+                            title="Click to view full details"
+                            className="text-left text-ink-600 hover:text-accent-600 hover:underline underline-offset-2 truncate block w-full cursor-pointer"
+                          >
+                            {c.notes}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDetail(c)}
+                            title="Click to view full details"
+                            className="text-ink-300 hover:text-accent-600 cursor-pointer"
+                          >
+                            —
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -226,6 +254,68 @@ export default function AgentDetail() {
           </div>
         </div>
       )}
+
+      {detail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 backdrop-blur-[1px] p-4"
+          onClick={() => setDetail(null)}
+        >
+          <div
+            className="bg-surface w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-[14px] border border-ink-100 shadow-[0_8px_40px_-8px_rgba(20,24,31,.35)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-ink-100 sticky top-0 bg-surface">
+              <div>
+                <h2 className="text-[15px] font-bold text-ink-900">{detail.client_name || "Call detail"}</h2>
+                <p className="text-[12px] text-ink-400 mt-0.5">
+                  {detail.lead_creation_date || "—"} · {detail.markets?.name || detail.location || "—"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                className="text-ink-400 hover:text-ink-800 text-xl leading-none cursor-pointer"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <Field label="Result" value={detail.result} />
+                <Field label="Source" value={detail.source_classification || detail.source} />
+                <Field label="Phone" value={detail.phone} mono />
+                <Field label="Op ID" value={detail.op_id} mono />
+                <Field label="Revenue" value={detail.revenue ? "$" + parseFloat(detail.revenue).toLocaleString() : null} />
+                <Field label="TTM result" value={detail.ttm_result} />
+                <Field label="Booked date" value={detail.booked_date} />
+                <Field label="Appointment" value={detail.appt_date} />
+                <Field label="Dial attempts" value={detail.dial_attempts != null ? String(detail.dial_attempts) : null} />
+                <Field label="Lead cost" value={detail.lead_cost ? "$" + parseFloat(detail.lead_cost).toFixed(2) : null} />
+                <Field label="Call type" value={detail.call_type} />
+                <Field label="Handled by" value={detail.is_bot ? "Bot (Avoca)" : "Human agent"} />
+              </div>
+
+              <div>
+                <div className="text-[10.5px] font-semibold text-ink-400 uppercase tracking-wider mb-1.5">Notes</div>
+                <div className="text-[13px] text-ink-700 whitespace-pre-wrap leading-relaxed bg-ink-50/60 rounded-lg p-3 border border-ink-100">
+                  {detail.notes || "No notes recorded for this call."}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, value, mono = false }) {
+  return (
+    <div>
+      <div className="text-[10.5px] font-semibold text-ink-400 uppercase tracking-wider mb-0.5">{label}</div>
+      <div className={`text-[13px] text-ink-800 ${mono ? "font-mono text-xs" : ""}`}>{value || "—"}</div>
     </div>
   );
 }
